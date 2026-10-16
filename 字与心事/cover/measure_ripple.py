@@ -105,7 +105,7 @@ if len(sys.argv) > 2:
         r = np.hypot(x - cx, y - cy); k = round(r / sp)
         return cy - np.sqrt((k * sp) ** 2 - (x - cx) ** 2)
     res = {"outside": [], "inside": []}
-    for X in np.arange(150.25, 930, 3.0):
+    for X in np.arange(CX - 389.75, CX + 390, 3.0):   # 150.25–930 on the 3:4 cover: across the title
         xd = int(X * 2); col = Y2[:, xd]
         for yd in range(240, 720):
             a, b, c = col[yd - 1], col[yd], col[yd + 1]
@@ -119,3 +119,27 @@ if len(sys.argv) > 2:
     for k, d in res.items():
         d = np.array(d)
         print("rings", k, len(d), "mean %+.3f" % d.mean(), "p5..p95 %+.3f..%+.3f" % tuple(np.percentile(d, [5, 95])))
+
+    # the ripple's extent (《文案撰写指南》9.3: the whole ripple in the frame, in the band under the type):
+    # the light hairlines on the axis, above and below the drop. In still water ring k lies at r = 5k
+    # (to ±0.05 px, as measured above); counted in from the still water, the outermost ring off its place
+    # by more than 0.1 px marks the ripple's edge
+    col = Y2[:, int(round(cx * 2 - 0.5))]
+    peaks = []
+    for yd in range(2, len(col) - 2):
+        a, b, c = col[yd - 1], col[yd], col[yd + 1]
+        if b > a and b >= c and b > col[max(0, yd - 4):yd + 5].min() + 3:
+            den = a - 2 * b + c
+            peaks.append((yd + 0.5 + (0.5 * (a - c) / den if den else 0)) / 2)
+    sub_bottom = out["sub"]["bottom"]
+    edge = {}
+    for side, sel in (("up", [p for p in peaks if sub_bottom + 4 < p < cy - 15]), ("down", [p for p in peaks if p > cy + 15])):
+        r = np.array(sorted(abs(p - cy) for p in sel))
+        k = round(r[-1] / 5.0) - (len(r) - 1 - np.arange(len(r)))   # the outermost ring is in still water
+        disp = r - 5.0 * k
+        off = np.nonzero(np.abs(disp) > 0.1)[0]
+        edge[side] = float(r[off[-1]]) if len(off) else 0.0
+        beyond = disp[off[-1] + 1:] if len(off) else disp
+        print(f"ripple {side}: {len(r)} lines, edge at r {edge[side]:.1f} (the {len(beyond)} rings beyond it off their place by {np.abs(beyond).max():.3f} px at most)")
+    top, bottom = cy - edge["up"], cy + edge["down"]
+    print(f"ripple from y {top:.1f} to {bottom:.1f}: {top - sub_bottom:.1f} px under the subtitle's ink, {im.shape[0] - bottom:.1f} px above the bottom edge")
