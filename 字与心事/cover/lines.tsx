@@ -209,26 +209,48 @@ const GaozhiScene: React.FC = () => {
 // hairlines themselves — they crowd together on a crest and spread apart in a trough, an engraver's
 // way of shading — so nothing but lines makes the picture. Beyond the front the water is still and the
 // lines evenly spaced, and the title's lines are never moved. The drop's vermilion tints the water round it.
-// The whole ripple (the disc out to its front) stands in the band between the type and the bottom edge:
-// its top 56 px under the subtitle's ink (y 510; the type is the same in both covers), its bottom 50 px
-// above the bottom edge, the drop at the band's middle on the axis. 3:4: 510–1390, front 440, drop at y
-// 950. 4:3: 510–1030, front 260, drop at y 770 — the same ripple a moment earlier: the same hairlines
-// 5 px apart and the same waves (λ, depth), its front not yet so far out; the line weights never scaled.
-// (The first 4:3, 2026-10-17, kept the 3:4's ripple at full size with the drop at y 910 and lost its
-// lower half off the bottom edge; the user: "为什么不完整的显示那个圆圈波纹？你完全可以上移啊")
-const RZ = { top: 510, bottom: CH - 50 };
+// 3:4: the whole ripple (the disc out to its front, 440 px) stands in the band between the type and the
+// bottom edge, its top 56 px under the subtitle's ink (y 510), its bottom 50 px above the bottom edge, the
+// drop at (540, 950); the type stands in still water.
+// 4:3: the ripple fills the frame (its front at 1400 px, beyond the farthest corner, 1076 px from the drop
+// at (720, 800)), and behind the type the waves keep a quarter of their height (calm 0.75, easing back to
+// full over 160 px round the box of the type's ink), so the lines run on through the letters evenly. The
+// same hairlines 5 px apart, the same waves (λ, depth); the type where it is in the 3:4.
+// (2026-10-17: the first 4:3 kept the 3:4's ripple at full size with the drop at y 910 and lost its lower
+// half off the bottom edge — "为什么不完整的显示那个圆圈波纹？你完全可以上移啊"; the second fitted it, front
+// 260, into the band under the type — "你既然是横版封面，我建议你的图案在整个图片中铺满，不然显得太小家子气了。
+// 文字就在现有的位置就行了，只要不让图案和文字产生激烈冲突就行")
+const WIDE = CW > CH;
 const RP = {
-  cx: CW / 2, cy: Number(params.get("cy") ?? (RZ.top + RZ.bottom) / 2), s: Number(params.get("s") ?? 5), hOut: 0.36, aOut: Number(params.get("aout") ?? 0.3),
-  lam0: 20, lamK: 0.11, front: Number(params.get("front") ?? (RZ.bottom - RZ.top) / 2), depth: 0.72, r0: 14, dot: 6.5, soft: 1.6,
+  cx: CW / 2, cy: Number(params.get("cy") ?? (WIDE ? 800 : 950)), s: Number(params.get("s") ?? 5), hOut: 0.36, aOut: Number(params.get("aout") ?? 0.3),
+  lam0: 20, lamK: 0.11, front: Number(params.get("front") ?? (WIDE ? 1400 : 440)), depth: 0.72, r0: 14, dot: 6.5, soft: 1.6,
   tl: params.get("tl") ?? "inv", hDark: Number(params.get("hdark") ?? 0.5), hSwell: Number(params.get("hswell") ?? 1.0), fill: Number(params.get("fill") ?? 0.38),
+  // decay: the waves lower as they spread, height ∝ (74 / r)^decay beyond the rise (0.5: a circular wave's
+  // own spreading; tried for the 4:3 and left at 0: the outer waves faded and the frame looked empty again);
+  // calm: how much of their height they lose behind the type (0–1), easing back to full over calmSoft px
+  // round the box of the title's and the subtitle's ink. 3:4: 0, its type in still water
+  decay: Number(params.get("decay") ?? 0), calm: Number(params.get("calm") ?? (WIDE ? 0.75 : 0)), calmSoft: Number(params.get("calmsoft") ?? 160),
 };
 const rpPhase = (r: number) => ((2 * Math.PI) / RP.lamK) * Math.log(1 + (RP.lamK * r) / RP.lam0);
-const rpAmp = (r: number) => smooth(RP.r0, RP.r0 + 60, r) * (1 - smooth(RP.front - 90, RP.front, r));
+const rpAmp = (r: number) =>
+  smooth(RP.r0, RP.r0 + 60, r) * (1 - smooth(RP.front - 90, RP.front, r)) * (RP.decay > 0 && r > RP.r0 + 60 ? Math.pow((RP.r0 + 60) / r, RP.decay) : 1);
 // the ring index at radius r: integer values are the lines
 const rpU = (r: number) => (r + ((RP.depth * (RP.lam0 + RP.lamK * r)) / (2 * Math.PI)) * rpAmp(r) * Math.sin(rpPhase(r))) / RP.s;
 function rippleLayer() {
   const W = CW * DPR, H = CH * DPR;
   const t = setLine(TITLE, T.size, T.track, T.inkTop, () => "#fff");
+  // behind the type the waves are stilled by RP.calm: the box round the title's and the subtitle's ink
+  const sub = setLine(SUB, T.sSize, T.sTrack, t.inkBottom + T.gap, () => "#fff");
+  const box = { x0: Math.min(t.inkL, sub.inkL), x1: Math.max(t.inkR, sub.inkR), y0: t.inkTop, y1: sub.inkBottom };
+  const still = (X: number, Y: number) => {
+    const dx = Math.max(box.x0 - X, 0, X - box.x1), dy = Math.max(box.y0 - Y, 0, Y - box.y1);
+    return 1 - RP.calm * (1 - smooth(0, RP.calmSoft, Math.sqrt(dx * dx + dy * dy)));
+  };
+  // the ring index at a point (canvas px), as rpU with the waves' height scaled there
+  const uAt = (X: number, Y: number) => {
+    const ex = X - RP.cx, ey = Y - RP.cy, r = Math.sqrt(ex * ex + ey * ey);
+    return r < RP.front ? (r + ((RP.depth * (RP.lam0 + RP.lamK * r)) / (2 * Math.PI)) * rpAmp(r) * still(X, Y) * Math.sin(rpPhase(r))) / RP.s : r / RP.s;
+  };
   const mask = (pick: (i: number) => boolean) => {
     const c = document.createElement("canvas");
     c.width = W;
@@ -258,8 +280,18 @@ function rippleLayer() {
       const tb = Math.pow(Math.min(1, r / 1250), 0.8);
       const bg0 = near[0] + (far[0] - near[0]) * tb, bg1 = near[1] + (far[1] - near[1]) * tb, bg2 = near[2] + (far[2] - near[2]) * tb;
       // the nearest ring: its distance in px, from the ring index and how fast it changes here
-      const u = r < RP.front ? rpU(r) : r / RP.s;
-      const du = r < RP.front ? (rpU(r + 0.05) - rpU(r - 0.05)) / 0.1 : 1 / RP.s;
+      // (with the waves stilled behind the type the index changes along the rings too: its whole gradient)
+      let u: number, du: number, sw = 1;
+      if (RP.calm > 0) {
+        const X = (x + 0.5) / DPR, Y = (y + 0.5) / DPR;
+        u = uAt(X, Y);
+        const gx = (uAt(X + 0.05, Y) - uAt(X - 0.05, Y)) / 0.1, gy = (uAt(X, Y + 0.05) - uAt(X, Y - 0.05)) / 0.1;
+        du = Math.sqrt(gx * gx + gy * gy);
+        sw = still(X, Y);
+      } else {
+        u = r < RP.front ? rpU(r) : r / RP.s;
+        du = r < RP.front ? (rpU(r + 0.05) - rpU(r - 0.05)) / 0.1 : 1 / RP.s;
+      }
       const dist = Math.abs(u - Math.round(u)) / du;
       // the masks' coverage is their alpha (getImageData is unpremultiplied: the colour channels of white
       // text read 255 wherever any of the blur reaches, which swelled the letters 2.2 px on every side)
@@ -269,7 +301,7 @@ function rippleLayer() {
         return c < 0 ? 0 : c > 1 ? 1 : c;
       };
       // a crest catches a little more light
-      const glint = r < RP.front ? 0.5 * rpAmp(r) * Math.max(0, Math.sin(rpPhase(r) + Math.PI / 2)) : 0;
+      const glint = r < RP.front ? 0.5 * rpAmp(r) * sw * Math.max(0, Math.sin(rpPhase(r) + Math.PI / 2)) : 0;
       const env = 0.55 + glint + 0.45 * Math.exp(-r / 600);
       const outside = cover(RP.hOut) * smooth(RP.r0, RP.r0 + 3 * RP.s, r) * RP.aOut * env;
       // inside the title the rings keep their radii (the first sketch thickened them to 3.7 px of every

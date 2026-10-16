@@ -96,50 +96,103 @@ grid("字与心事", 178, 36 / 320, 150, 345, red=lambda i: i >= 2)
 grid("从落笔，到有人读懂", 60, 34 / 120, int(B) + 60, int(B) + 132)
 
 # the rings, on the 2x render: positions of the light hairlines above the title and of the dark hairlines
-# inside the 月白 letters, against r = k × spacing about the drop
+# inside the 月白 letters, against where the ripple puts them. The ripple as cover/lines.tsx draws it: ring k
+# is the line where the ring index u = k, u = (r + depth·λ(r)/2π·height·sin φ(r)) / spacing about the drop;
+# a line found at a point is off its place by (u − round(u)) / |∇u| px. The parameters are the cover's
+# (3:4: drop (540, 950), front 440; 4:3: drop (720, 800), front 1400, stilled behind the type by 0.75 over
+# 160 px), or given after the two images as key=value (cy=, front=, decay=, calm=, calmsoft=).
 if len(sys.argv) > 2:
     im2 = np.asarray(Image.open(sys.argv[2]).convert("RGB")).astype(float)
     Y2 = 0.2126 * im2[..., 0] + 0.7152 * im2[..., 1] + 0.0722 * im2[..., 2]
-    cx, cy, sp = out["drop"]["cx"], out["drop"]["cy"], 5.0
-    def pred(x, y):
-        r = np.hypot(x - cx, y - cy); k = round(r / sp)
-        return cy - np.sqrt((k * sp) ** 2 - (x - cx) ** 2)
+    Hh = im.shape[0]
+    P = dict(s=5.0, lam0=20.0, lamK=0.11, depth=0.72, r0=14.0, decay=0.0, calm=0.0, calmsoft=140.0)
+    P.update(dict(cy=800.0, front=1400.0, calm=0.75, calmsoft=160.0) if W > Hh else dict(cy=950.0, front=440.0))
+    for kv in sys.argv[3:]:
+        k, v = kv.split("=")
+        P[k] = float(v)
+    cx, cy = W / 2, P["cy"]
+    print("ripple model:", {k: P[k] for k in ("cy", "front", "decay", "calm", "calmsoft")}, "| drop measured at", (out["drop"]["cx"], out["drop"]["cy"]))
+    bx = (min(out["title"]["left"], out["sub"]["left"]), max(out["title"]["right"], out["sub"]["right"]), out["title"]["top"], out["sub"]["bottom"])
+
+    def smooth(a, b, x):
+        t = np.clip((x - a) / (b - a), 0, 1)
+        return t * t * (3 - 2 * t)
+
+    def u_at(X, Y):
+        r = np.hypot(X - cx, Y - cy)
+        amp = smooth(P["r0"], P["r0"] + 60, r) * (1 - smooth(P["front"] - 90, P["front"], r))
+        if P["decay"] > 0:
+            amp = amp * np.where(r > P["r0"] + 60, ((P["r0"] + 60) / np.maximum(r, 1e-9)) ** P["decay"], 1.0)
+        dx = np.maximum(np.maximum(bx[0] - X, 0), X - bx[1]); dy = np.maximum(np.maximum(bx[2] - Y, 0), Y - bx[3])
+        still = 1 - P["calm"] * (1 - smooth(0, P["calmsoft"], np.hypot(dx, dy)))
+        ph = (2 * np.pi / P["lamK"]) * np.log(1 + P["lamK"] * r / P["lam0"])
+        u = (r + P["depth"] * (P["lam0"] + P["lamK"] * r) / (2 * np.pi) * amp * still * np.sin(ph)) / P["s"]
+        return np.where(r < P["front"], u, r / P["s"])
+
+    def off(X, Y):
+        u = u_at(X, Y)
+        g = np.hypot((u_at(X + 0.05, Y) - u_at(X - 0.05, Y)) / 0.1, (u_at(X, Y + 0.05) - u_at(X, Y - 0.05)) / 0.1)
+        return (u - np.round(u)) / g
+
     res = {"outside": [], "inside": []}
     for X in np.arange(CX - 389.75, CX + 390, 3.0):   # 150.25–930 on the 3:4 cover: across the title
         xd = int(X * 2); col = Y2[:, xd]
         for yd in range(240, 720):
             a, b, c = col[yd - 1], col[yd], col[yd + 1]
             den = a - 2 * b + c
-            off = 0.5 * (a - c) / den if den else 0
-            yy = (yd + 0.5 + off) / 2
+            o = 0.5 * (a - c) / den if den else 0
+            yy = (yd + 0.5 + o) / 2
             if b > a and b >= c and b > a + 3 and col[max(0, yd - 8):yd + 9].max() < 90:
-                res["outside"].append(yy - pred(X, yy))
+                res["outside"].append(off(X, yy))
             if X < cx and b < a and b <= c and col[yd - 4] > 190 and col[yd + 4] > 190 and b < 150:
-                res["inside"].append(yy - pred(X, yy))
+                res["inside"].append(off(X, yy))
     for k, d in res.items():
         d = np.array(d)
         print("rings", k, len(d), "mean %+.3f" % d.mean(), "p5..p95 %+.3f..%+.3f" % tuple(np.percentile(d, [5, 95])))
 
-    # the ripple's extent (《文案撰写指南》9.3: the whole ripple in the frame, in the band under the type):
-    # the light hairlines on the axis, above and below the drop. In still water ring k lies at r = 5k
-    # (to ±0.05 px, as measured above); counted in from the still water, the outermost ring off its place
-    # by more than 0.1 px marks the ripple's edge
-    col = Y2[:, int(round(cx * 2 - 0.5))]
-    peaks = []
-    for yd in range(2, len(col) - 2):
-        a, b, c = col[yd - 1], col[yd], col[yd + 1]
-        if b > a and b >= c and b > col[max(0, yd - 4):yd + 5].min() + 3:
-            den = a - 2 * b + c
-            peaks.append((yd + 0.5 + (0.5 * (a - c) / den if den else 0)) / 2)
-    sub_bottom = out["sub"]["bottom"]
-    edge = {}
-    for side, sel in (("up", [p for p in peaks if sub_bottom + 4 < p < cy - 15]), ("down", [p for p in peaks if p > cy + 15])):
-        r = np.array(sorted(abs(p - cy) for p in sel))
-        k = round(r[-1] / 5.0) - (len(r) - 1 - np.arange(len(r)))   # the outermost ring is in still water
-        disp = r - 5.0 * k
-        off = np.nonzero(np.abs(disp) > 0.1)[0]
-        edge[side] = float(r[off[-1]]) if len(off) else 0.0
-        beyond = disp[off[-1] + 1:] if len(off) else disp
-        print(f"ripple {side}: {len(r)} lines, edge at r {edge[side]:.1f} (the {len(beyond)} rings beyond it off their place by {np.abs(beyond).max():.3f} px at most)")
-    top, bottom = cy - edge["up"], cy + edge["down"]
-    print(f"ripple from y {top:.1f} to {bottom:.1f}: {top - sub_bottom:.1f} px under the subtitle's ink, {im.shape[0] - bottom:.1f} px above the bottom edge")
+    def lines_along(profile):
+        """light hairlines along a profile of the 2x image (device px), in cover px"""
+        pk = []
+        for j in range(2, len(profile) - 2):
+            a, b, c = profile[j - 1], profile[j], profile[j + 1]
+            if b > a and b >= c and b > profile[max(0, j - 4):j + 5].min() + 3:
+                den = a - 2 * b + c
+                pk.append((j + 0.5 + (0.5 * (a - c) / den if den else 0)) / 2)
+        return np.array(pk)
+
+    corner = max(np.hypot(x - cx, y - cy) for x in (0, W) for y in (0, Hh))
+    if P["front"] < corner:
+        # the ripple's extent (《文案撰写指南》9.3: the whole ripple in the frame, in the band under the type):
+        # the light hairlines on the axis, above and below the drop. In still water ring k lies at r = 5k
+        # (to ±0.05 px, as measured above); counted in from the still water, the outermost ring off its
+        # place by more than 0.1 px marks the ripple's edge
+        peaks = lines_along(Y2[:, int(round(cx * 2 - 0.5))])
+        sub_bottom = out["sub"]["bottom"]
+        edge = {}
+        for side, sel in (("up", peaks[(peaks > sub_bottom + 4) & (peaks < cy - 15)]), ("down", peaks[peaks > cy + 15])):
+            r = np.sort(np.abs(sel - cy))
+            k = round(r[-1] / 5.0) - (len(r) - 1 - np.arange(len(r)))   # the outermost ring is in still water
+            disp = r - 5.0 * k
+            o = np.nonzero(np.abs(disp) > 0.1)[0]
+            edge[side] = float(r[o[-1]]) if len(o) else 0.0
+            beyond = disp[o[-1] + 1:] if len(o) else disp
+            print(f"ripple {side}: {len(r)} lines, edge at r {edge[side]:.1f} (the {len(beyond)} rings beyond it off their place by {np.abs(beyond).max():.3f} px at most)")
+        top, bottom = cy - edge["up"], cy + edge["down"]
+        print(f"ripple from y {top:.1f} to {bottom:.1f}: {top - sub_bottom:.1f} px under the subtitle's ink, {Hh - bottom:.1f} px above the bottom edge")
+    else:
+        # the ripple fills the frame (《文案撰写指南》第 7 节, the 横版): how far apart the rings lie behind
+        # the type — between the title and the subtitle, across the type's width — against the same distance
+        # from the drop away from the type (left of the drop, on its own height)
+        # (down a column the rings cross at a slant: each spacing is taken along the radius, Δy·|y − cy| / r)
+        gap = []
+        for X in np.arange(bx[0] + 0.25, bx[1], 3.0):
+            pk = lines_along(Y2[:, int(X * 2)])
+            pk = pk[(pk > out["title"]["bottom"] + 6) & (pk < out["sub"]["top"] - 6)]
+            mid = (pk[1:] + pk[:-1]) / 2
+            gap += list(np.diff(pk) * np.abs(mid - cy) / np.hypot(X - cx, mid - cy))
+        gap = np.array(gap)
+        rg = cy - (out["title"]["bottom"] + out["sub"]["top"]) / 2
+        row = lines_along(Y2[int(cy * 2), :])
+        away = np.diff(row[(row > cx - rg - 60) & (row < cx - rg + 60)])
+        print(f"rings behind the type (between title and subtitle, r ≈ {rg:.0f}): {len(gap)} spacings, {gap.min():.2f}–{gap.max():.2f} px (p5–p95 {np.percentile(gap, 5):.2f}–{np.percentile(gap, 95):.2f})")
+        print(f"rings at the same distance from the drop, away from the type: {away.min():.2f}–{away.max():.2f} px")

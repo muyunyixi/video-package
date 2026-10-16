@@ -18,7 +18,7 @@
 | 一部片子的代码 | 不放 | `<片名>/`（代码包，解开存放） |
 | 成片、封面图 | 不放（发给用户，用户自己保存） | 不放 |
 
-- 已有的片子：《字与心事》v4.5（74.3 秒，2026-10-16 交付）。它是所有做法的参考实现，新片照它的结构做。
+- 已有的片子：《字与心事》v4.6（74.3 秒；画面是 2026-10-16 交付的 v4.5，2026-10-17 重压单文件版、修首尾接缝）。它是所有做法的参考实现，新片照它的结构做。
 
 ## 二、读什么、读到哪
 
@@ -56,7 +56,8 @@
   - 提交首行写成“<片名或公共>：vX.Y 做了什么”，不超过 25 个字；
   - 署名 `muyun <19288906+muyunyixi@users.noreply.github.com>`，只设在这个仓库里（`git config user.name`、`user.email`）；提交说明里不加 Claude 的署名（`Co-Authored-By`、`Claude-Session` 这类行）；
   - README 的“项目状态”表跟着改；工作窗口推不了标签、建不了 Release（403），不要再试。
-- 封面：代码画的线画，图案和颜色按本片的意象，字由同一组线画出、线在字边不错位；先出 2–3 个草图给用户选；交付竖版（3:4，1080×1440）和横版（4:3，1440×1080）两张；横版由竖版改出：字不动，图案整个放进字下方的区域（上下离字、离底边与竖版一样远），放不下就缩小范围、线距线宽不缩（《文案撰写指南》B 章，第 7 节）。
+- 封面：代码画的线画，图案和颜色按本片的意象，字由同一组线画出、线在字边不错位；先出 2–3 个草图给用户选；交付竖版（3:4，1080×1440）和横版（4:3，1440×1080）两张；横版由竖版改出：字不动，图案铺满整张画、在字后减弱，不和字冲突（《文案撰写指南》B 章，第 7 节）。
+- 首尾循环：压缩以后接缝也要平。单文件版用 `render/encode_v46.sh` 的做法（接缝前后压得细）；交付前用 `render/verify_seam.py` 在解码后的成片上量，接缝那一步不超过前后帧间变化的 2 倍（指南 8.8）。
 - 渲染：同时只开一个渲染进程；会话空闲时机器会被回收，长任务要一直盯着，脚本写成可续渲的；每一帧只由帧号决定（第七节）。
 - 杀进程用 PID，不用 `pkill -f`；不用带通配符的 `rm`；发给用户的文件不超过约 30 MiB。
 - 项目工具：只能写文字文档；在根目录新建文档时路径写成“/文件名”（只写文件名会被放进 `claude/`）。
@@ -68,7 +69,7 @@
 | `src/lib/ink.ts`、`render/hw_metrics.py`（生成 `src/gen/hw_metrics.json`） | 网格排：字形尺寸从字体文件读；lineInk、cellOf、penInCell |
 | `src/lib/glyph.ts`、`src/lib/textures.ts` | canvas 里写字、三维场景里的单字贴图，同一套排字规则 |
 | `src/lib/paint.ts`、`seep.tsx`、`post.ts`、`sdf.ts`、`ThreeLayer.tsx` | 墨渗、后期、three.js 图层 |
-| `render/build.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v45.sh`、`encode_v45.sh`、`verify_final.py` | 打包、逐帧渲染（可续渲）、编码、交付前的检查 |
+| `render/build.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v45.sh`、`encode_v45.sh`、`encode_v46.sh`、`verify_final.py`、`verify_seam.py` | 打包、逐帧渲染（可续渲）、编码（单文件版用 v46 的，接缝不跳）、交付前的检查（含解码后的首尾接缝） |
 | `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v45.py` | 乐器与音效合成、母带；总谱的写法 |
 | `cover/kit.ts`、`cover/lines.tsx`、`cover/measure_ripple.py` | 线画封面（「涟漪」）；在导出的图上量字和线 |
 | `tools/gridtype.py`、`analysis/grid_v45.py` | 排字工具（出 SVG、PNG）；在成片上量网格排 |
