@@ -27,9 +27,11 @@ for (const n of names) {
   const page = await browser.newPage({ viewport: { width: 1080, height: 1440 }, deviceScaleFactor: 2 });
   page.on("pageerror", (e) => console.log("[pageerror]", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.log("[console]", m.text().slice(0, 200)); });
+  // a name may carry the scene's own parameters: gaozhi&body=script → ?scene=gaozhi&body=script,
+  // saved as gaozhi_body-script_x2.png
   await page.goto(`http://localhost:${port}/zxs/cover/index.html?scene=${n}`);
   await page.waitForFunction(() => window.coverReady === true, null, { timeout: 300000 });
-  const file = path.join(out, `${n}_x2.png`);
+  const file = path.join(out, `${n.replace(/&/g, "_").replace(/=/g, "-")}_x2.png`);
   await page.locator("#c").screenshot({ path: file, type: "png", timeout: 300000 });
   const info = await page.evaluate(() => window.__type);
   console.log(n, "->", file, JSON.stringify(info));
