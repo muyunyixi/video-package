@@ -24,7 +24,9 @@ const browser = await chromium.launch({
   args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
 });
 for (const n of names) {
-  const page = await browser.newPage({ viewport: { width: 1080, height: 1440 }, deviceScaleFactor: 2 });
+  // 3:4 (1080×1440), or 4:3 (1440×1080) when the name carries ar=43
+  const wide = /(^|&)ar=43(&|$)/.test(n);
+  const page = await browser.newPage({ viewport: wide ? { width: 1440, height: 1080 } : { width: 1080, height: 1440 }, deviceScaleFactor: 2 });
   page.on("pageerror", (e) => console.log("[pageerror]", e.message));
   page.on("console", (m) => { if (m.type() === "error") console.log("[console]", m.text().slice(0, 200)); });
   // a name may carry the scene's own parameters: gaozhi&body=script → ?scene=gaozhi&body=script,

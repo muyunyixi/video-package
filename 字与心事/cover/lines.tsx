@@ -11,7 +11,7 @@ import React, { useState } from "react";
 import { paperCanvas } from "../src/lib/textures";
 import { glyphInk, penInCell, spanTop } from "../src/lib/ink";
 import { COLORS, HW } from "../src/lib/util";
-import { CW, CH, TITLE, SUB, T, setLine, DPR, hiCanvas, url } from "./kit";
+import { AR, CW, CH, TITLE, SUB, T, setLine, DPR, hiCanvas, url } from "./kit";
 import { COL, fileRows, wrap, type Cls, type Row } from "./listing";
 
 const MONO = '"Latin Modern Mono", monospace';
@@ -210,7 +210,9 @@ const GaozhiScene: React.FC = () => {
 // way of shading — so nothing but lines makes the picture. Beyond the front the water is still and the
 // lines evenly spaced, and the title's lines are never moved. The drop's vermilion tints the water round it.
 const RP = {
-  cx: 540, cy: Number(params.get("cy") ?? 950), s: Number(params.get("s") ?? 5), hOut: 0.36, aOut: Number(params.get("aout") ?? 0.3),
+  // the drop on the axis; in the 4:3 cover lower in the frame (the ripple the same size, its lower part off the
+  // bottom edge), so that its front (y = cy − front) stays below the subtitle as in the 3:4
+  cx: CW / 2, cy: Number(params.get("cy") ?? (AR === "43" ? 910 : 950)), s: Number(params.get("s") ?? 5), hOut: 0.36, aOut: Number(params.get("aout") ?? 0.3),
   lam0: 20, lamK: 0.11, front: Number(params.get("front") ?? 440), depth: 0.72, r0: 14, dot: 6.5, soft: 1.6,
   tl: params.get("tl") ?? "inv", hDark: Number(params.get("hdark") ?? 0.5), hSwell: Number(params.get("hswell") ?? 1.0), fill: Number(params.get("fill") ?? 0.38),
 };

@@ -3,7 +3,10 @@
 // shot's pixel ratio, a seeded random.
 import { lineInk, spanTop, type LineInk } from "../src/lib/ink";
 
-export const CW = 1080, CH = 1440;
+// the canvas: portrait 3:4 (1080×1440) by default; ?ar=43 gives the landscape 4:3 one (1440×1080) that 抖音
+// asks for beside it (2026-10-17): the same picture and the same type at the same sizes, laid out on the wider frame
+export const AR = new URLSearchParams(location.search).get("ar") === "43" ? "43" : "34";
+export const CW = AR === "43" ? 1440 : 1080, CH = AR === "43" ? 1080 : 1440;
 export const TITLE = "字与心事";
 export const SUB = "从落笔，到有人读懂";
 

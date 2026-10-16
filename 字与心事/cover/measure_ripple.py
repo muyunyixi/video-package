@@ -42,42 +42,44 @@ def box(S, y0, y1, x0, x1, bg):
 
 
 out = {}
-bgY = float(np.median(Y[60:110, 300:780]))   # the ground above the title, hairlines and all
-bgR = float(np.median(RG[60:110, 300:780]))
+W = im.shape[1]
+CX = W / 2   # the axis: 540 on the 3:4 cover, 720 on the 4:3
+bgY = float(np.median(Y[60:110, int(CX) - 240:int(CX) + 240]))   # the ground above the title, hairlines and all
+bgR = float(np.median(RG[60:110, int(CX) - 240:int(CX) + 240]))
 out["ground"] = dict(Y=round(bgY, 1), RG=round(bgR, 1))
 # the four letters, each looked for in its own cell (178 px, 20 px between cells, the row centred on
-# x = 540: 《文案撰写指南》8.3) widened by 10 px: 心 is four separate strokes, so gaps between columns of
+# the axis: 《文案撰写指南》8.3) widened by 10 px: 心 is four separate strokes, so gaps between columns of
 # ink do not mark the letters
-cells = [(154 + i * 198, 154 + i * 198 + 178) for i in range(4)]
+cells = [(CX - 386 + i * 198, CX - 386 + i * 198 + 178) for i in range(4)]
 chars = []
 for (a, b), ch in zip(cells, "字与心事"):
     S, bg = (Y, bgY) if ch in "字与" else (RG, bgR)
-    bx = box(S, 130, 360, a - 10, b + 10, bg)
+    bx = box(S, 130, 360, int(a) - 10, int(b) + 10, bg)
     chars.append((ch, bx))
 out["chars"] = chars
 T = min(c[1]["top"] for c in chars); B = max(c[1]["bottom"] for c in chars)
 L = chars[0][1]["left"]; R = chars[-1][1]["right"]
 out["title"] = dict(top=T, bottom=B, height=round(B - T, 2), left=L, right=R, width=round(R - L, 2), mid=round((L + R) / 2, 2),
                     gaps=[round(chars[i + 1][1]["left"] - chars[i][1]["right"], 2) for i in range(3)])
-sb = box(Y, int(B) + 20, int(B) + 150, 100, 980, bgY)
+sb = box(Y, int(B) + 20, int(B) + 150, 100, W - 100, bgY)
 out["sub"] = dict(sb, width=round(sb["right"] - sb["left"], 2), mid=round((sb["left"] + sb["right"]) / 2, 2), gap_to_title=round(sb["top"] - B, 2))
-# the drop: the centroid and extent of its vermilion
-ys, xs = np.nonzero(RG[900:1000, 490:590] > 60)
-w = RG[900:1000, 490:590][ys, xs] - bgR
-out["drop"] = dict(cx=round(490 + 0.5 + (xs * w).sum() / w.sum(), 2), cy=round(900 + 0.5 + (ys * w).sum() / w.sum(), 2),
-                   d=box(RG, 900, 1000, 490, 590, bgR))
+# the drop: the vermilion below the type (the rings near it are tinted far less), its centroid and extent
+ys, xs = np.nonzero(RG[500:, :] > 60)
+w = RG[500:, :][ys, xs] - bgR
+dx, dy = 0.5 + (xs * w).sum() / w.sum(), 500 + 0.5 + (ys * w).sum() / w.sum()
+out["drop"] = dict(cx=round(dx, 2), cy=round(dy, 2), d=box(RG, int(dy) - 50, int(dy) + 50, int(dx) - 50, int(dx) + 50, bgR))
 for k, v in out.items():
     print(k, v)
 
 
 # the grid (《字体处理规范》三 1–2, 5): every character in a 1 em cell, its ink centred on the cell's axis,
-# the row centred on x = 540 by its cells' outer edges. Each character's ink measured in its own cell
+# the row centred on the axis by its cells' outer edges. Each character's ink measured in its own cell
 # (widened by 8 px), against the axis the layout gives it
 def grid(text, size, track, y0, y1, red=lambda i: False):
     tr = round(size * track)
     n = len(text)
     width = n * size + (n - 1) * tr
-    x0 = 540 - width / 2
+    x0 = CX - width / 2
     print(f"grid {text}: {size} px cells, {tr} px between, cells {x0:.2f}–{x0 + width:.2f} (centre {x0 + width / 2:.2f})")
     worst = 0
     for i, ch in enumerate(text):
