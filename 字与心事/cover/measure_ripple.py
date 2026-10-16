@@ -69,6 +69,30 @@ out["drop"] = dict(cx=round(490 + 0.5 + (xs * w).sum() / w.sum(), 2), cy=round(9
 for k, v in out.items():
     print(k, v)
 
+
+# the grid (《字体处理规范》三 1–2, 5): every character in a 1 em cell, its ink centred on the cell's axis,
+# the row centred on x = 540 by its cells' outer edges. Each character's ink measured in its own cell
+# (widened by 8 px), against the axis the layout gives it
+def grid(text, size, track, y0, y1, red=lambda i: False):
+    tr = round(size * track)
+    n = len(text)
+    width = n * size + (n - 1) * tr
+    x0 = 540 - width / 2
+    print(f"grid {text}: {size} px cells, {tr} px between, cells {x0:.2f}–{x0 + width:.2f} (centre {x0 + width / 2:.2f})")
+    worst = 0
+    for i, ch in enumerate(text):
+        cl = x0 + i * (size + tr)
+        S, bg = (RG, bgR) if red(i) else (Y, bgY)
+        bx = box(S, y0, y1, int(cl) - 8, int(cl + size) + 8, bg)
+        c = (bx["left"] + bx["right"]) / 2
+        worst = max(worst, abs(c - (cl + size / 2)))
+        print(f"   {ch} axis {cl + size / 2:7.2f}  ink {bx['left']:7.2f}–{bx['right']:7.2f}  centre {c:7.2f}  Δ {c - (cl + size / 2):+.2f}")
+    print(f"   max |Δ| {worst:.2f}")
+
+
+grid("字与心事", 178, 36 / 320, 150, 345, red=lambda i: i >= 2)
+grid("从落笔，到有人读懂", 60, 34 / 120, int(B) + 60, int(B) + 132)
+
 # the rings, on the 2x render: positions of the light hairlines above the title and of the dark hairlines
 # inside the 月白 letters, against r = k × spacing about the drop
 if len(sys.argv) > 2:
