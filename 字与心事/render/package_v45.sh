@@ -21,8 +21,9 @@ cp "$Z"/analysis/{align_v41.py,hud_v41.py,search_v41.py,continuity_v41.py,visibl
 cp "$Z"/tools/{gridtype.py,svg2png.mjs} "$P/tools/"
 # the cover (《文案撰写指南》B 章): its own page and scripts, kept out of src/ so the film's code coda is not changed
 cp "$Z"/cover/{app.tsx,kit.ts,lines.tsx,listing.ts,build.mjs,clockCover.ts,post.ts,size.ts,index.html,shoot.mjs,finish.py,measure.py,measure_ripple.py,make_clock_copy.py,plate.mjs,make_bundle.py,crop.py,forme_cut.py} "$P/cover/"
-# the documents only: the scratch files that assembled the version record stay out
-cp "$Z"/docs/{字与心事_项目文档.md,桃子诗词稿件.md,版本迭代与需求变更记录.md,整体制作指南.md,文案撰写指南.md,字体处理规范.md} "$P/docs/"
+# this film's own documents (the scratch files that assembled the version record stay out); the three shared
+# specs live once, in the repository's 公共/ and the project's root (2026-10-17: no copies here)
+cp "$Z"/docs/{字与心事_项目文档.md,桃子诗词稿件.md,版本迭代与需求变更记录.md} "$P/docs/"
 cp "$Z"/README.md "$P/README.md"
 # the same vendor snapshots as v2 (Remotion core + player, three.js), as shipped then
 cp -r "$VENDOR_SNAPSHOT" "$P/vendor"
