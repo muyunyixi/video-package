@@ -223,7 +223,7 @@ export const HUD: React.FC = () => {
   const light = lt >= 0.5;
   const fg = mixRGBA([234, 230, 222, 0.82], [30, 29, 32, 0.84], lt);
   const fgDim = mixRGBA([234, 230, 222, 0.5], [30, 29, 32, 0.52], lt);
-  const creditColor = mixRGBA([234, 230, 222, 0.5], [30, 29, 32, 0.74], lt);
+  const creditColor = mixRGBA([234, 230, 222, 0.85], [30, 29, 32, 0.85], lt);
   const H = (a: number) => `rgba(214,208,196,${(a * lt).toFixed(3)})`;
   // the clock retires in the window's white flash: the coda is outside the story
   const intro = easeOutCubic(prog(f, 2, 16)) * (1 - smooth(prog(f, cues.ending.start - 14, cues.ending.start)));
@@ -314,10 +314,10 @@ export const HUD: React.FC = () => {
             opacity: cOp,
           }}
         >
-          <span style={{ width: 26, height: 2, marginRight: 16, background: COLORS.vermilion, display: "inline-block", boxShadow: lt > 0 ? `0 0 6px 2px ${H(0.92)}` : undefined }} />
+          <span style={{ width: 26, height: 2, marginRight: 16, background: COLORS.vermilion, display: "inline-block", boxShadow: lt > 0 ? `0 0 6px 2px ${H(0.55)}` : undefined }} />
           {/* v4.0: the line is centred on what is drawn — the dash's left end to the ink of 》 —
               so the trailing letter-spacing and the empty right half of 》 are taken off the box */}
-          <span style={{ textShadow: lt > 0 ? `0 0 2px ${H(0.92)}, 0 0 2px ${H(0.92)}, 0 0 4px ${H(0.92)}, 0 0 4px ${H(0.92)}, 0 0 9px ${H(0.92)}, 0 0 20px ${H(0.7)}` : undefined, marginRight: -(24 * 0.18 + closeBlank(light ? 400 : 300)) }}>
+          <span style={{ textShadow: lt > 0 ? `0 0 2px ${H(0.55)}, 0 0 2px ${H(0.55)}, 0 0 4px ${H(0.55)}, 0 0 4px ${H(0.55)}, 0 0 9px ${H(0.55)}, 0 0 20px ${H(0.42)}` : undefined, marginRight: -(24 * 0.18 + closeBlank(light ? 400 : 300)) }}>
             桃子《{credit.text}》
           </span>
         </div>
