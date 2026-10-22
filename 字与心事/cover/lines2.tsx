@@ -233,9 +233,14 @@ function ridgeHeight(X: number, k: number, nLines: number) {
   const z = (y0 - RL.yH) / RL.depth; // 0 at the horizon, 1 at the 3:4's bottom edge
   const xa = X34(X), xn = xa / 1080;
   const land = 1 - smooth(RL.split - 0.12, RL.split + 0.06, xn + 0.05 * Math.sin(z * 7));
-  // the ranges: highest a little way in from the horizon, lower towards us
+  // the ranges: highest a little way in from the horizon, lower towards us; and from the middle distance
+  // to our feet the foothills, broader and lower, so that the land runs on to the bottom edge (the first
+  // 3:4 left the near ground level from y 1170 down: neither land nor sea — the user, 2026-10-23: "不太清楚
+  // 左下角这一块是想表达什么")
   const range = Math.pow(Math.sin(Math.PI * Math.min(1, z * 1.6)), 1.3) * (0.55 + 0.45 * (1 - z));
-  const m = ridged(xa / 230, z * 4.2) * range * RL.mtn * land * (0.35 + 0.65 * Math.exp(-Math.pow((xn - RL.peak) / 0.22, 2)));
+  const foot = 0.3 * smooth(0.35, 0.8, z);
+  const bump = Math.exp(-Math.pow((xn - RL.peak) / 0.22, 2));
+  const m = (ridged(xa / 230, z * 4.2) * range * (0.35 + 0.65 * bump) + ridged(xa / 420 + 3.7, z * 2.1 + 5.3) * foot * (0.7 + 0.3 * bump)) * RL.mtn * land;
   const sea = (1 - land) * RL.seaA * (0.3 + z) * (0.6 * Math.sin(xa / 23 + z * 41) + 0.4 * Math.sin(xa / 9.5 - z * 77));
   return m + sea;
 }
@@ -252,7 +257,8 @@ function ridgeLayer() {
   g.addColorStop(1, "rgb(9,12,21)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, CW, CH);
-  const n = Math.ceil(CH / RL.sp);
+  // (lines whose rest is below the bottom edge still rise into the picture over the near hills)
+  const n = Math.ceil((CH + 0.35 * RL.mtn) / RL.sp);
   let beacon = { x: 0, y: CH };
   const step = 1.5;
   for (let k = 0; k < n; k++) {
