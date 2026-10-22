@@ -105,6 +105,8 @@ const FS0 = Math.round(bankAtY(shoreY(3600))) - 2;
 const CX0 = Math.round(bankAtY(causeY(3560))) - 3;
 const BRIDGE = { X: 2560, half: 172, foot: 810, crest: 734 }; // the rainbow bridge
 const PAV = { X: DIVE.X, wl: 975 }; // the pavilion standing in the lake
+// v5.0: its upstairs windows, one in each bay (the middle one is the one the camera falls into)
+const PAV_WINS = [DIVE.X - 49.5, DIVE.X, DIVE.X + 49.5];
 const SIDE = { X: 420, top: 700 }; // a side canal running up into the town under the arch bridge
 const sideX = (y: number) => SIDE.X + (CANAL - y) * 0.2;
 const sideW = (y: number) => 24 + 104 * clamp((y - SIDE.top) / (CANAL - SIDE.top));
@@ -2243,7 +2245,7 @@ export function createCity(renderer: THREE.WebGLRenderer): SceneHandle {
         c.arc(PX, wl - 246, 3.6, 0, Math.PI * 2);
         c.fill();
         c.fillStyle = C("20,16,14");
-        c.fillRect(DIVE.X - DIVE.w / 2 - 1.4, DIVE.Y - DIVE.h / 2 - 1.4, DIVE.w + 2.8, DIVE.h + 2.8);
+        for (const wx of PAV_WINS) c.fillRect(wx - DIVE.w / 2 - 1.4, DIVE.Y - DIVE.h / 2 - 1.4, DIVE.w + 2.8, DIVE.h + 2.8);
       });
       const rr = mulberry32(98);
       for (const k of [-2, -1, 0, 1, 2]) {
@@ -2253,9 +2255,8 @@ export function createCity(renderer: THREE.WebGLRenderer): SceneHandle {
         reflect(X, Y, 22, 52, wl, rk, 0, 0.55, rr, 110);
       }
       for (const k of [-1, 1]) lantern(rr, PX + k * 100, wl - 100, wl - 84, 2, 1, wl);
-      // upstairs: one window lit beside the dark one, in the next bay (v4.5: centred between the posts at
-      // −66 and −33; v4.4's, at −34, stood on the post)
-      win(rr, PX - 49.5, DIVE.Y, 14, 22, wl, 0.85);
+      // upstairs (v5.0): one room, three windows of the same lattice, one in each bay (the side bays'
+      // centred between the posts at ±33 and ±66), dark until the last thread lands and lights the room
     });
   }
 
@@ -2337,20 +2338,25 @@ export function createCity(renderer: THREE.WebGLRenderer): SceneHandle {
   }, 0.95);
   (heroWin.material as THREE.ShaderMaterial).uniforms.uOn.value = 1;
   // the pavilion window the last thread finds: paper and the lantern lattice of the ending
-  const diveWin = pane(DIVE.X, DIVE.Y, DIVE.w + 2, DIVE.h + 2, 48, (c, w, h) => {
-    c.fillStyle = "#1b120d";
-    c.fillRect(0, 0, w, h);
-    c.save();
-    c.translate(1, 1);
-    paper(c, w - 2, h - 2, "rgba(255,238,206,1)", "rgba(238,176,104,1)");
-    c.fillStyle = "rgba(48,28,18,0.92)";
-    lanternLattice(c, 0, 0, w - 2, h - 2, 0.42);
-    c.restore();
-  }, 1.0);
+  const pavPane = (X: number, gain: number) =>
+    pane(X, DIVE.Y, DIVE.w + 2, DIVE.h + 2, 48, (c, w, h) => {
+      c.fillStyle = "#1b120d";
+      c.fillRect(0, 0, w, h);
+      c.save();
+      c.translate(1, 1);
+      paper(c, w - 2, h - 2, "rgba(255,238,206,1)", "rgba(238,176,104,1)");
+      c.fillStyle = "rgba(48,28,18,0.92)";
+      lanternLattice(c, 0, 0, w - 2, h - 2, 0.42);
+      c.restore();
+    }, gain);
+  const diveWin = pavPane(DIVE.X, 1.0);
+  // v5.0: the side windows of the same room light with it, a little dimmer
+  const sideWins = [pavPane(PAV_WINS[0], 0.82), pavPane(PAV_WINS[2], 0.82)];
   const glowTexW = toTex(glowCanvas(256, "255,178,104", 0.22));
   const glowMat = (o: number) => new THREE.MeshBasicMaterial({ map: glowTexW, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, opacity: o });
   const heroGlow = put(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), glowMat(0.3)), 1, HERO.X - 30, HERO.X + 30, HERO.Y - 22, HERO.Y + 22);
   const diveGlow = put(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), glowMat(0)), 1, DIVE.X - 30, DIVE.X + 30, DIVE.Y - 34, DIVE.Y + 34);
+  const sideGlows = [PAV_WINS[0], PAV_WINS[2]].map((X) => put(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), glowMat(0)), 1, X - 24, X + 24, DIVE.Y - 28, DIVE.Y + 28));
 
   // ---------------------------------------------------------------- threads
   // a chain of leaps along the scroll, each landing on a window that wakes on that beat, the
@@ -2549,6 +2555,12 @@ export function createCity(renderer: THREE.WebGLRenderer): SceneHandle {
       dv.uOn.value = smooth(prog(f, LAST_THREAD - 1, LAST_THREAD + 3));
       dv.uFlare.value = f >= LAST_THREAD ? 0.9 * Math.exp(-(f - LAST_THREAD) / 9) + 0.25 * smooth(prog(f, CY.dive, CY.end)) : 0;
       (diveGlow.material as THREE.MeshBasicMaterial).opacity = dv.uOn.value * (0.55 + 0.45 * Math.exp(-Math.max(0, f - LAST_THREAD) / 12)) * (1 - 0.6 * prog(f, CY.dive, CY.end));
+      sideWins.forEach((sw, i) => {
+        const u = (sw.material as THREE.ShaderMaterial).uniforms;
+        u.uOn.value = dv.uOn.value;
+        u.uFlare.value = 0.35 * dv.uFlare.value;
+        (sideGlows[i].material as THREE.MeshBasicMaterial).opacity = 0.6 * dv.uOn.value * (1 - 0.6 * prog(f, CY.dive, CY.end));
+      });
       const heroW = HERO.w * view(1, cam).a;
       (heroGlow.material as THREE.MeshBasicMaterial).opacity = (0.28 + 0.2 * beat) * smooth(prog(heroW, 420, 140));
       (heroWin.material as THREE.ShaderMaterial).uniforms.uOn.value = 1; // lit all along: the letter lies over it until it goes

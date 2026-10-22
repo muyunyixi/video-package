@@ -18,7 +18,7 @@
 | 一部片子的代码 | 不放 | `<片名>/`（代码包，解开存放） |
 | 成片、封面图 | 不放（发给用户，用户自己保存） | 不放 |
 
-- 已有的片子：《字与心事》v4.7（74.3 秒，2026-10-17；画面是 v4.5 的，v4.6 修首尾接缝，v4.7 统一出处的样式）。它是所有做法的参考实现，新片照它的结构做。
+- 已有的片子：《字与心事》v5.0（74.3 秒，2026-10-23；画面大部分是 v4.5 的，v4.6 修首尾接缝，v4.7 统一出处的样式，v5.0 出处去柔光、亭子三扇窗、配乐的节奏组重写、封面换成「山南海北」）。它是所有做法的参考实现，新片照它的结构做。
 
 ## 二、读什么、读到哪
 
@@ -32,7 +32,7 @@
 | 《字与心事_项目文档》 | 只看目录和一两节的写法，当作新片项目文档的样子；不读全文 |
 | 《字与心事》的《版本迭代与需求变更记录》 | 不读。要看写法，只看开头的“总览”表和最新一条的前几行（这份有十六万字节，旧条目是历史） |
 | `字与心事/README.md` | 要复用代码时读：环境、目录、从代码到成片的步骤 |
-| 代码 | 用到哪个模块读哪个（第五节）。`vendor/`（第三方源码）、`src/gen/`（生成的数据）、`audio/score_v3*.py` 和 `score_v4[0-4].py`（旧版总谱）不读 |
+| 代码 | 用到哪个模块读哪个（第五节）。`vendor/`（第三方源码）、`src/gen/`（生成的数据）、`audio/score_v3*.py`、`score_v4[0-5].py`（旧版总谱）和 `audio/listing_v45.json`（数据）不读 |
 
 找东西用搜索：项目里用 project_search，仓库里用 grep，按关键词查到再读那一段。
 
@@ -57,7 +57,8 @@
   - 提交首行写成“<片名或公共>：vX.Y 做了什么”，不超过 25 个字；
   - 署名 `muyun <19288906+muyunyixi@users.noreply.github.com>`，只设在这个仓库里（`git config user.name`、`user.email`）；提交说明里不加 Claude 的署名（`Co-Authored-By`、`Claude-Session` 这类行）；
   - README 的“项目状态”表跟着改；工作窗口推不了标签、建不了 Release（403），不要再试。
-- 封面：代码画的线画，图案和颜色按本片的意象，字由同一组线画出、线在字边不错位；先出 2–3 个草图给用户选；交付竖版（3:4，1080×1440）和横版（4:3，1440×1080）两张；横版由竖版改出：字不动，图案铺满整张画、在字后减弱，不和字冲突（《文案撰写指南》B 章，第 7 节）。
+- 封面：代码画的线画，图案和颜色按本片的意象，字由同一组线画出、线在字边不错位；先出 2–3 个草图给用户选；交付竖版（3:4，1080×1440）和横版（4:3，1440×1080）两张；横版由竖版演变：字不动，同一幅画按同一套公式画在更宽更矮的画布上，画里的东西大小、位置不变，不为横版压低缩小；挑构思时就要让字所在的地方本来是平静的，横版才不用迁就（《文案撰写指南》B 章，第 7 节）。
+- 配乐的节奏组：鼓每段一个鼓型、一个力度，镲只在段落开头，不为画面事件加不在拍上的鼓；伴奏层同一音型反复、固定音量、左右拉开（指南 8.5）。
 - 首尾循环：压缩以后接缝也要平。单文件版用 `render/encode_v46.sh` 的做法（接缝前后压得细）；交付前用 `render/verify_seam.py` 在解码后的成片上量，接缝那一步不超过前后帧间变化的 2 倍（指南 8.8）。
 - 渲染：同时只开一个渲染进程；会话空闲时机器会被回收，长任务要一直盯着，脚本写成可续渲的；每一帧只由帧号决定（第七节）。
 - 杀进程用 PID，不用 `pkill -f`；不用带通配符的 `rm`；发给用户的文件不超过约 30 MiB。
@@ -70,9 +71,9 @@
 | `src/lib/ink.ts`、`render/hw_metrics.py`（生成 `src/gen/hw_metrics.json`） | 网格排：字形尺寸从字体文件读；lineInk、cellOf、penInCell |
 | `src/lib/glyph.ts`、`src/lib/textures.ts` | canvas 里写字、三维场景里的单字贴图，同一套排字规则 |
 | `src/lib/paint.ts`、`seep.tsx`、`post.ts`、`sdf.ts`、`ThreeLayer.tsx` | 墨渗、后期、three.js 图层 |
-| `render/build.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v45.sh`、`encode_v45.sh`、`encode_v46.sh`、`verify_final.py`、`verify_seam.py` | 打包、逐帧渲染（可续渲）、编码（单文件版用 v46 的，接缝不跳）、交付前的检查（含解码后的首尾接缝） |
-| `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v45.py` | 乐器与音效合成、母带；总谱的写法 |
-| `cover/kit.ts`、`cover/lines.tsx`、`cover/measure_ripple.py` | 线画封面（「涟漪」）；在导出的图上量字和线 |
+| `render/build.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v45.sh`、`chain_v50.sh`、`link_v50.sh`、`encode_v45.sh`、`encode_v46.sh`、`encode_v50.sh`、`verify_final.py`、`verify_seam.py` | 打包、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v50 + link_v50）、编码（单文件版用 v46 的，接缝不跳）、交付前的检查（含解码后的首尾接缝） |
+| `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v50.py` | 乐器与音效合成、母带；总谱的写法（节奏组的写法见 `score_v50.py` 末尾的 K 段） |
+| `cover/kit.ts`、`cover/lines2.tsx`、`cover/measure_shannan.py`；`cover/lines.tsx`、`cover/measure_ripple.py` | 线画封面（「山南海北」：线要互相遮挡的画法；「涟漪」：逐像素按线的距离画）；在导出的图上量字和线 |
 | `tools/gridtype.py`、`analysis/grid_v45.py` | 排字工具（出 SVG、PNG）；在成片上量网格排 |
 
 复制到新片以后：脚本里的绝对路径（`/home/claude/zxs`）改成新片的目录；字体从 `公共/汇文明朝体.otf` 复制到 `<片名>/assets/huiwen.otf`；环境和版本见 `字与心事/README.md`。

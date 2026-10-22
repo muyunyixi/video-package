@@ -14,6 +14,7 @@ import { glyphInk, spanTop } from "../src/lib/ink";
 import { COLORS, HW } from "../src/lib/util";
 import { CW, CH, TITLE, SUB, T, setLine, DPR, hiCanvas, url, mulberry32 } from "./kit";
 import { LINE_SCENES } from "./lines";
+import { LINE2_SCENES } from "./lines2";
 
 // the type (cover/kit.ts: T, setLine) in the scene's own colours
 export type TypeStyle = "ink" | "light" | "moon";
@@ -280,7 +281,7 @@ const ClockScene: React.FC = () => {
 };
 
 // ---------- the page ----------
-const SCENES: Record<string, React.FC> = { window: WindowScene, moon: MoonScene, forme: FormeScene, clock: ClockScene, ...LINE_SCENES };
+const SCENES: Record<string, React.FC> = { window: WindowScene, moon: MoonScene, forme: FormeScene, clock: ClockScene, ...LINE_SCENES, ...LINE2_SCENES };
 const App: React.FC = () => {
   const name = new URLSearchParams(location.search).get("scene") || "window";
   const S = SCENES[name];

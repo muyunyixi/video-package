@@ -53,8 +53,8 @@ function clockAt(f: number) {
   return { date: `5月${day}日`, time: `${two(Math.floor(t / 3600))}:${two(Math.floor((t % 3600) / 60))}:${two(t % 60)}` };
 }
 
-// v4.0: the frame layer's two styles (dark ink with a paper halo over light pictures, pale text
-// over dark ones) cross-fade instead of flipping in one frame. Each range is [from, to, fadeIn,
+// v4.0: the frame layer's two styles (dark ink over light pictures, pale text over dark ones; v5.0:
+// neither has a halo — the dark credit's paper halo, v4.0–v4.7, is gone) cross-fade instead of flipping in one frame. Each range is [from, to, fadeIn,
 // fadeOut]: the style is fully "light" inside it and the change is spread evenly across the
 // boundary (fades are set from the measured brightness under the clock and the credit).
 const ramp = (f: number, at: number, len: number) => (len <= 0 ? (f >= at ? 1 : 0) : smooth(prog(f, at - len / 2, at + len / 2)));
@@ -224,7 +224,6 @@ export const HUD: React.FC = () => {
   const fg = mixRGBA([234, 230, 222, 0.82], [30, 29, 32, 0.84], lt);
   const fgDim = mixRGBA([234, 230, 222, 0.5], [30, 29, 32, 0.52], lt);
   const creditColor = mixRGBA([234, 230, 222, 0.85], [30, 29, 32, 0.85], lt);
-  const H = (a: number) => `rgba(214,208,196,${(a * lt).toFixed(3)})`;
   // the clock retires in the window's white flash: the coda is outside the story
   const intro = easeOutCubic(prog(f, 2, 16)) * (1 - smooth(prog(f, cues.ending.start - 14, cues.ending.start)));
   const st = status(f);
@@ -314,10 +313,12 @@ export const HUD: React.FC = () => {
             opacity: cOp,
           }}
         >
-          <span style={{ width: 26, height: 2, marginRight: 16, background: COLORS.vermilion, display: "inline-block", boxShadow: lt > 0 ? `0 0 6px 2px ${H(0.55)}` : undefined }} />
+          <span style={{ width: 26, height: 2, marginRight: 16, background: COLORS.vermilion, display: "inline-block" }} />
           {/* v4.0: the line is centred on what is drawn — the dash's left end to the ink of 》 —
               so the trailing letter-spacing and the empty right half of 》 are taken off the box */}
-          <span style={{ textShadow: lt > 0 ? `0 0 2px ${H(0.55)}, 0 0 2px ${H(0.55)}, 0 0 4px ${H(0.55)}, 0 0 4px ${H(0.55)}, 0 0 9px ${H(0.55)}, 0 0 20px ${H(0.42)}` : undefined, marginRight: -(24 * 0.18 + closeBlank(light ? 400 : 300)) }}>
+          {/* v5.0: no halo (v4.0–v4.7 the dark credit had one: over grey water it read as a glow, and
+              it bought little — 3.3–3.9 : 1 → 3.7–4.2 : 1 there, nothing on paper) */}
+          <span style={{ marginRight: -(24 * 0.18 + closeBlank(light ? 400 : 300)) }}>
             桃子《{credit.text}》
           </span>
         </div>
