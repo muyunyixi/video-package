@@ -227,6 +227,16 @@ const ridged = (x: number, y: number) => {
   }
   return s;
 };
+// the foothills' noise is read in a turned frame (ridges run across and aslant, not straight at us) and
+// changes from line to line as fast as along a line (the first version varied slowly with depth: its
+// ridges came straight towards us and the peaks of the near hills stacked up on one vertical line —
+// the user: "竖版的左下角的山起伏的地方都在同一条竖线上给人的观感是不是稍微有点奇怪")
+const FH = { a: num("fha", 0.6), sx: 420, sz: num("fhz", 4.5) };
+const footHills = (xa: number, z: number) => {
+  const u = xa / FH.sx, v = z * FH.sz;
+  const c = Math.cos(FH.a), s = Math.sin(FH.a);
+  return ridged(u * c - v * s + 3.7, u * s + v * c + 5.3);
+};
 function ridgeHeight(X: number, k: number, nLines: number) {
   const y0 = RL.sp * (k + 0.5);
   if (y0 < RL.yH) return 0;
@@ -240,7 +250,7 @@ function ridgeHeight(X: number, k: number, nLines: number) {
   const range = Math.pow(Math.sin(Math.PI * Math.min(1, z * 1.6)), 1.3) * (0.55 + 0.45 * (1 - z));
   const foot = 0.3 * smooth(0.35, 0.8, z);
   const bump = Math.exp(-Math.pow((xn - RL.peak) / 0.22, 2));
-  const m = (ridged(xa / 230, z * 4.2) * range * (0.35 + 0.65 * bump) + ridged(xa / 420 + 3.7, z * 2.1 + 5.3) * foot * (0.7 + 0.3 * bump)) * RL.mtn * land;
+  const m = (ridged(xa / 230, z * 4.2) * range * (0.35 + 0.65 * bump) + footHills(xa, z) * foot * (0.7 + 0.3 * bump)) * RL.mtn * land;
   const sea = (1 - land) * RL.seaA * (0.3 + z) * (0.6 * Math.sin(xa / 23 + z * 41) + 0.4 * Math.sin(xa / 9.5 - z * 77));
   return m + sea;
 }
