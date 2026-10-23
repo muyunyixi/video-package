@@ -57,10 +57,14 @@ const latticeShade = () => {
   const S = "rgb(178,166,152)";
   c.fillStyle = S;
   c.fillRect(0, 0, 2000, 1160);
+  // v5.1: the turn is the one that cancels the shear's 0.05 exactly, so the lattice's cross-bars lie
+  // level, parallel to the lines of the theme (with -0.06 they rose 0.57° to the right: next to the
+  // level text it read as a lattice set a little crooked, not as a slant); the uprights lean 8.5°,
+  // the moonlight coming in from the side
   const place = () => {
     c.translate(940, 510);
     c.transform(1, 0.05, -0.2, 1, 0, 0);
-    c.rotate(-0.06);
+    c.rotate(-Math.atan(0.05));
   };
   const w = 1380, h = 1240;
   c.save();

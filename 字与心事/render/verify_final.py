@@ -1,11 +1,13 @@
-"""Checks the v4.5 deliverables (v4.4 … v3.1: same checks, their own paths): frames, the two films, loudness, the split zip.
+"""Checks the deliverables: frames, the two films, loudness, the split zip (v4.5 by default; another version
+through the environment, e.g. VER=5.1 FR=out/full51_all D=out/final51).
+v5.1: also the colour tags (both films BT.709) and the 高清版's bitrate second by second (its peak).
 usage: python3 verify_final.py [frames|films|zip|all]"""
 import hashlib, json, os, subprocess, sys
 
 Z = "/home/claude/zxs"
-VER, NFRAMES = "4.5", 2230
-FR = f"{Z}/out/full45"
-D = f"{Z}/out/final45"
+VER, NFRAMES = os.environ.get("VER", "4.5"), 2230
+FR = os.environ.get("FR", f"{Z}/out/full45")
+D = os.environ.get("D", f"{Z}/out/final45")
 HQ = f"{D}/字与心事_高清版_v{VER}.mp4"
 H265 = f"{D}/字与心事_H265_v{VER}.mp4"
 what = sys.argv[1] if len(sys.argv) > 1 else "all"
@@ -42,6 +44,16 @@ def films():
         print(f"{os.path.basename(f)}: {size} B = {size / 2**20:.2f} MiB, {size / 1e6:.2f} MB, {int(j['format']['bit_rate']) / 1e6:.2f} Mbps, duration {float(j['format']['duration']):.3f} s")
         for s in j["streams"]:
             print("   ", {k: s.get(k) for k in ("codec_type", "codec_name", "profile", "codec_tag_string", "width", "height", "r_frame_rate", "nb_frames", "duration", "sample_rate")})
+        c = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=color_space,color_primaries,color_transfer,color_range", "-of", "csv=p=0", f], capture_output=True, text=True).stdout.strip()
+        print("    colour (range, matrix, transfer, primaries):", c)
+        if f == HQ:
+            pk = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "packet=pts_time,size", "-of", "csv=p=0", f], capture_output=True, text=True).stdout.split()
+            sec = {}
+            for ln in pk:
+                t, s = ln.split(",")[:2]
+                sec[int(float(t))] = sec.get(int(float(t)), 0) + int(s)
+            mb = [sec[k] * 8 / 1e6 for k in sorted(sec)]
+            print(f"    video bitrate per second: max {max(mb):.1f} Mbps, seconds over 16: {sum(v > 16 for v in mb)} of {len(mb)}")
         r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", f, "-af", "ebur128=peak=true", "-f", "null", "-"], capture_output=True, text=True).stderr
         tail = [ln.strip() for ln in r.splitlines() if ln.strip().startswith(("I:", "Peak:", "LRA:"))][-3:]
         print("    loudness:", " | ".join(tail))

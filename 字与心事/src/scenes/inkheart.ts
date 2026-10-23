@@ -242,6 +242,15 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
   };
   addSplash(D.drop1, tanI.x, tanI.y, 26, false);
   addSplash(D.drop2, que.x, que.y, 46, true);
+  // v5.1: the dense ink that lands above the line dries pale. The line is level (更、忐、忑 end at
+  // 534–535 px), but at full strength the splash and the burst left a cloud of black dots over 雀跃
+  // (1056 px darker than half, against 5 over 忐忑) and the line read as higher on the left (用户:
+  // “总觉得还是左高右低”). A mark above the line's ink top hits at full strength and, over the next
+  // 24 frames, dries to ABOVE_DRY of it (about the pale ink of 忐忑); marks beside and below are kept.
+  const LINE_TOP = base1 + L.inkT;
+  const ABOVE_DRY = 0.4;
+  const dryAbove = (y: number, wet: number) =>
+    lerp(1, lerp(1, ABOVE_DRY, smooth(clamp((LINE_TOP + 6 - y) / 16))), smooth(clamp(wet / 24)));
 
   // ---------- the burst: 雀跃 throws up its ink ----------
   const softDot = (() => {
@@ -558,7 +567,7 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
       for (const s of splashes) {
         const t = prog(f, s.at, s.at + 6);
         const m = s.mesh.material as THREE.MeshBasicMaterial;
-        m.opacity = f >= s.at ? (s.dark ? 0.92 : 0.6) : 0;
+        m.opacity = f >= s.at ? (s.dark ? 0.92 * dryAbove(s.oy + s.dy, f - s.at - 6) : 0.6) : 0;
         const e = easeOutCubic(t);
         s.mesh.position.set(s.ox + s.dx * e, -(s.oy + s.dy * e), 0.5);
         s.mesh.scale.setScalar(s.r * (0.6 + 0.4 * e));
@@ -598,7 +607,10 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
         u.uDrop.value.set(0.5, 0.5);
         u.uR.value = f >= D.drop2 ? 900 * easeOutCubic(prog(f, D.drop2, D.drop2 + 16)) : 0;
         const bloom = easeOutCubic(prog(f, D.drop2, B0 + 6));
-        u.uBleed.value = lerp(0.8, 4.4, bloom);
+        // v5.1: blooms to 2.0 (was 4.4): at 4.4 the ink ran 7 px past the strokes and filled the
+        // narrow white of 跃's 足 (8 px between its two uprights) and 雀's 隹; at 2.0 the gaps stay
+        // open and the pair is still the heaviest ink of the line (it runs 4–5 px, 更浓于 2)
+        u.uBleed.value = lerp(0.8, 2.0, bloom);
         u.uDensity.value = lerp(0.72, 1.0, bloom);
         u.uRim.value = 0.25;
         u.uHalo.value = 1.0;
@@ -656,7 +668,7 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
         if (s.splat) {
           const sm = s.splat.material as THREE.MeshBasicMaterial;
           const st = tf - s.land;
-          sm.opacity = st >= 0 ? 0.9 : 0;
+          sm.opacity = st >= 0 ? 0.9 * dryAbove(s.ly, st - 3) : 0;
           s.splat.scale.setScalar(s.size * 3.2 * lerp(0.55, 1, easeOutCubic(clamp(st / 3))));
         }
       }
