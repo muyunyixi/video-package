@@ -294,8 +294,10 @@ function ridgeLayer() {
     ctx.lineWidth = y0 < RL.yH ? 0.75 : 0.85;
     ctx.stroke();
   }
-  // the thread: from the beacon over the sea to the far north, hanging a little
-  const end = { x: CW - 65, y: RL.yH - 1 };
+  // the thread: from the beacon over the sea to the far north, hanging a little, and on out of the picture
+  // at the horizon (2026-10-23: it stopped 65 px short of the right edge for no reason of its own; the
+  // user: "如果没有绝对的理由，还是让它直接延伸到最边缘吧")
+  const end = { x: CW + 1, y: RL.yH - 1 };
   ctx.strokeStyle = COLORS.vermilionHot;
   ctx.lineWidth = 2;
   ctx.beginPath();
