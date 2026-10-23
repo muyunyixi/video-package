@@ -96,7 +96,7 @@
 | `src/lib/ink.ts`、`render/hw_metrics.py`（生成 `src/gen/hw_metrics.json`） | 网格排：字形尺寸从字体文件读；lineInk、cellOf、penInCell |
 | `src/lib/glyph.ts`、`src/lib/textures.ts` | canvas 里写字、三维场景里的单字贴图，同一套排字规则 |
 | `src/lib/paint.ts`、`seep.tsx`、`post.ts`、`sdf.ts`、`ThreeLayer.tsx` | 墨渗、后期、three.js 图层 |
-| `render/build.mjs`、`build_v51.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v51.sh`、`link_v51.sh`、`encode_v51.sh`、`verify_final.py`、`verify_seam.py` | 打包（build_v51：片尾透出的源码固定用 v4.5 那份）、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v51 + link_v51）、编码（encode_v51：两版都换成 BT.709 并标全；高清版即平台上传版，平均 12 Mbps、每秒不超过 16 Mbps；单文件版接缝前后压得细）、交付前的检查（含颜色标记、码率峰值、解码后的首尾接缝） |
+| `render/build.mjs`、`build_v51.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v51.sh`、`link_v51.sh`、`encode_v51.sh`、`verify_final.py`、`verify_seam.py` | 打包（build_v51：片尾透出的源码固定用 v4.5 那份）、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v51 + link_v51）、编码（encode_v51：两版都换成 BT.709 并标全；高清版即平台上传版，平均 12 Mbps（maxrate 16M、缓冲 16M；不把每秒卡在 16 Mbps 以内，那样首尾接缝会跳）；单文件版接缝前后压得细）、交付前的检查（含颜色标记、码率峰值、解码后的首尾接缝） |
 | `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v50.py` | 乐器与音效合成、母带；总谱的写法（节奏组的写法见 `score_v50.py` 末尾的 K 段） |
 | `cover/kit.ts`、`cover/lines2.tsx`、`cover/measure_shannan.py`；`cover/lines.tsx`、`cover/measure_ripple.py` | 线画封面（「山南海北」：线要互相遮挡的画法；「涟漪」：逐像素按线的距离画）；在导出的图上量字和线 |
 | `tools/gridtype.py`、`analysis/grid_v45.py` | 排字工具（出 SVG、PNG）；在成片上量网格排 |
