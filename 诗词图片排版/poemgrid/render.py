@@ -26,7 +26,8 @@ def to_svg(lay, font, with_marks=True):
          f'<rect width="{W}" height="{H}" fill="{lay["bg"]}"/>']
     if lay["sub_box"]:
         b = lay["sub_box"]
-        p.append(f'<rect x="{b["x"]:.4f}" y="{b["y"]:.4f}" width="{b["w"]:.4f}" height="{b["h"]:.4f}" fill="{b["color"]}"/>')
+        p.append(f'<rect x="{b["x"]:.4f}" y="{b["y"]:.4f}" width="{b["w"]:.4f}" height="{b["h"]:.4f}" '
+                 f'fill="{b["color"]}" fill-opacity="{b["opacity"]}"/>')
     if with_marks and lay["marks"]:
         p.append(f'<g fill="{T.MARK["color"]}" fill-rule="evenodd">')
         for m in lay["marks"]:

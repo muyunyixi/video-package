@@ -24,6 +24,9 @@ class Font:
         # 稿定设计把字体外框（head 的 yMin…yMax）放在行框里上下居中：
         # 行框上缘到基线 = 行距×字号/2 + beta×字号
         self.beta = (head.yMax + head.yMin) / 2 / self.upm
+        # 字的内容框（宋词副标题高亮底块按它加）：hhea 的上下界，汇文明朝体是 864 / −160，正好 1 em
+        self.ascent = self.tt["hhea"].ascent
+        self.descent = self.tt["hhea"].descent
         self._cache = {}
 
     def glyph(self, ch):

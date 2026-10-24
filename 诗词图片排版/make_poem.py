@@ -28,7 +28,7 @@ sys.path.insert(0, HERE)
 from poemgrid import template as T                      # noqa: E402
 from poemgrid.glyphs import Font                         # noqa: E402
 from poemgrid.layout import build, parse_line           # noqa: E402
-from poemgrid.measure import analyze_reference, mark_guard, recheck  # noqa: E402
+from poemgrid.measure import analyze_reference, mark_gaps, recheck  # noqa: E402
 from poemgrid.render import rasterize, to_svg           # noqa: E402
 
 DEFAULT_FONT = os.path.normpath(os.path.join(HERE, "..", "公共", "汇文明朝体.otf"))
@@ -76,13 +76,16 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
     L.append(f"二、小黄标（{mark_source}）")
     if not lay["marks"]:
         L.append("  无")
+    heavy = T.MARK["heavy_overlap_px"]
     for m in lay["marks"]:
-        gap = "" if m.get("gap") is None else f"，与上方墨迹间隙 {fmt(m['gap'])}"
+        gap, note = m.get("gap"), ""
+        if gap is not None and gap < -heavy:
+            note = f"  ← 字压进标 {-gap:.2f} px，超过 {heavy:g} px"
+        elif gap is not None and gap < 0:
+            note = "（贴上）"
+        gtxt = "" if gap is None else f"，与上方墨迹间隙 {fmt(gap)}"
         L.append(f"  第{m['row'] + 1}行第{m['col'] + 1}列「{m['ch']}」：中心 x {m['cx']:.2f}，"
-                 f"顶 {m['top']:.2f}（基线 +{m['top'] - lay['body'][m['row']]['baseline']:.2f}）{gap}")
-    shifted = sorted({(m["row"], m["shift"]) for m in lay["marks"] if m["shift"]})
-    for row, s in shifted:
-        L.append(f"  ※ 第{row + 1}行有字压到标顶，这一行的标整体下移 {s:.2f} px")
+                 f"顶 {m['top']:.2f}（基线 +{m['top'] - lay['body'][m['row']]['baseline']:.2f}）{gtxt}{note}")
     L.append("")
     L.append("三、导出复测（在导出的 PNG 上逐字量墨迹中心，与算出的位置比）")
     if rows:
@@ -152,7 +155,7 @@ def main():
                 ref["warnings"].append("配置里标的小黄标和参考图上的不一样，按配置出图")
 
     if lay["marks"]:
-        mark_guard(lay, rasterize(to_svg(lay, font, with_marks=False)))
+        mark_gaps(lay, rasterize(to_svg(lay, font, with_marks=False)))
     svg = to_svg(lay, font)
     img = rasterize(svg)
     out_png = os.path.join(args.out, f"{stem}.png")

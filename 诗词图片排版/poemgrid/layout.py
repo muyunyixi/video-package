@@ -107,7 +107,6 @@ def vertical(font, tpl, n_lines):
 
     cal = tpl["calib_dy_px"]
     out = {name: base[name] * T.S + cal.get(name, 0.0) for name in ("title", "rule", "sub") if name in base}
-    out["sub_top"] = tops["sub"] * T.S + cal.get("sub", 0.0)
     out["body"] = [b * T.S + cal["body"] for b in body]
     out["sign"] = sign * T.S + cal["sign"]
     out["stack_1x"] = dict(total=total, top=(T.CANVAS_H_1X - total) / 2)
@@ -153,10 +152,14 @@ def build(cfg, font, marks_override=None):
         rule_right = x0 + tpl["rule_dashes"] * rs
         lay["sub"] = place(font, sub_text, sub_size, rule_right - sub_w, v["sub"], role="副标题")
     else:
+        # 高亮底块 = 字的内容框（宽：字格总宽；高：hhea 上下界）四周各加 padding；左缘对齐 x0
         box = tpl["sub_box"]
-        pad = box["pad_x_px"]
+        pad = box["padding_1x"] * S
+        k = sub_size / font.upm
         lay["sub"] = place(font, sub_text, sub_size, x0 + pad, v["sub"], color=box["text_color"], role="副标题")
-        lay["sub_box"] = dict(x=x0, y=v["sub_top"], w=sub_w + 2 * pad, h=box["height_px"], color=box["color"])
+        top = v["sub"] - font.ascent * k - pad
+        lay["sub_box"] = dict(x=x0, y=top, w=sub_w + 2 * pad, h=(font.ascent - font.descent) * k + 2 * pad,
+                              color=box["color"], opacity=box["opacity"])
 
     sign = cfg.get("sign", "")
     sign_size = tpl["sign_size"] * S
@@ -169,7 +172,7 @@ def build(cfg, font, marks_override=None):
                 raise ValueError(f"小黄标的列号超出第{i + 1}行：{k + 1}")
             g = line["glyphs"][k]
             lay["marks"].append(dict(row=i, col=k, ch=g["ch"], cx=(g["cell"][0] + g["cell"][1]) / 2,
-                                     top=line["baseline"] + T.MARK["top_below_baseline_px"], shift=0.0))
+                                     top=line["baseline"] + T.MARK["top_below_baseline_px"]))
     return lay
 
 

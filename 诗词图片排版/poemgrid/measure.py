@@ -1,4 +1,4 @@
-"""在图上量：50% 交点法量墨迹边（亚像素），用于小黄标防撞、导出复测、参考图对照。
+"""在图上量：50% 交点法量墨迹边（亚像素），用于小黄标与字的间隙、导出复测、参考图对照。
 
 颜色分离用线性解：背景、白字、小黄标三种纯色两两之间的混合（抗锯齿边）都能分开，
 所以量白字时小黄标完全不干扰，量小黄标时白字也不干扰（红底、蓝底都一样）。
@@ -82,13 +82,20 @@ def maps(a, lay):
     return bg, w, m
 
 
+def box_rgb(lay):
+    """高亮底块叠在底色上之后的实际颜色。"""
+    sb = lay["tpl"]["sub_box"]
+    bg, c, al = np.array(hex2rgb(lay["bg"])), np.array(hex2rgb(sb["color"])), sb["opacity"]
+    return tuple(bg * (1 - al) + c * al)
+
+
 def sub_dark_map(a, lay, box=None):
-    """宋词副标题：高亮底块上的深色字。box 缺省用版式里的位置。"""
+    """宋词副标题：高亮底块上和底色同色的字。box 缺省用版式里的位置。"""
     b = box or lay["sub_box"]
     out = np.zeros(a.shape[:2])
     r0, r1 = int(np.ceil(b["y"])) + 1, int(b["y"] + b["h"]) - 1
     c0, c1 = int(np.ceil(b["x"])) + 1, int(b["x"] + b["w"]) - 1
-    out[r0:r1 + 1, c0:c1 + 1] = coverage2(a[r0:r1 + 1, c0:c1 + 1], hex2rgb(b["color"]),
+    out[r0:r1 + 1, c0:c1 + 1] = coverage2(a[r0:r1 + 1, c0:c1 + 1], box_rgb(lay),
                                           hex2rgb(lay["tpl"]["sub_box"]["text_color"]))
     return out
 
@@ -107,30 +114,19 @@ def glyph_windows(gl):
     return out
 
 
-# ---------------- 小黄标防撞 ----------------
+# ---------------- 小黄标与字的间隙 ----------------
 
-def mark_guard(lay, text_only_img):
-    """在只有字的图上量每个标正上方那个字的墨迹底边；同一行的标共用一个高度，
-    任何一个撞上（间隙 < min_gap），整行一起下移到留出 push_gap。"""
+def mark_gaps(lay, text_only_img):
+    """在只有字的图上量每个标正上方（标的宽度范围内）那个字的墨迹底边，算出间隙。
+    只报告，不挪标：负数表示字的底边压进了标里。"""
     a = np.asarray(text_only_img, dtype=float)
     _, w, _ = maps(a, lay)
-    rows = sorted({m["row"] for m in lay["marks"]})
-    for row in rows:
-        ms = [m for m in lay["marks"] if m["row"] == row]
-        base = lay["body"][row]["baseline"]
+    for m in lay["marks"]:
+        base = lay["body"][m["row"]]["baseline"]
         r0, r1 = int(base - 60), int(base + 40)
-        for m in ms:
-            c0, c1 = int(np.floor(m["cx"] - MARK_HALF_W)), int(np.ceil(m["cx"] + MARK_HALF_W))
-            cr = cross(w[r0:r1 + 1, c0:c1 + 1].max(axis=1))
-            m["ink_bottom"] = None if cr is None else cr[1] + r0
-        gaps = [m["top"] - m["ink_bottom"] for m in ms if m["ink_bottom"] is not None]
-        if gaps and min(gaps) < T.MARK["min_gap_px"]:
-            shift = T.MARK["push_gap_px"] - min(gaps)
-            for m in ms:
-                m["top"] += shift
-                m["shift"] = shift
-        for m in ms:
-            m["gap"] = None if m["ink_bottom"] is None else m["top"] - m["ink_bottom"]
+        c0, c1 = int(np.floor(m["cx"] - MARK_HALF_W)), int(np.ceil(m["cx"] + MARK_HALF_W))
+        cr = cross(w[r0:r1 + 1, c0:c1 + 1].max(axis=1))
+        m["gap"] = None if cr is None else m["top"] - (cr[1] + r0)
 
 
 # ---------------- 导出复测 ----------------
@@ -195,19 +191,24 @@ def _bands(cov, thr=0.5, min_h=3):
 
 
 def _find_sub_box(a, lay):
-    """宋词：在预计位置附近找高亮底块的四边（按底块颜色的像素占比，50% 交点）。"""
+    """宋词：找高亮底块的四边。底块是白色 66% 不透明度，用白的覆盖率除以不透明度，底块里是 1；
+    底块上的字和底色一样（0），上方主标题的白字 > 1，它们在一行、一列里都占少数，
+    所以取中位数做剖面，再在 50% 处求交点。"""
     b = lay["sub_box"]
-    col = np.array(hex2rgb(b["color"]))
-    near = (np.abs(a - col).max(axis=2) < 40).astype(float)
-    r0, r1 = int(b["y"] - 60), int(b["y"] + b["h"] + 60)
-    rows = near[r0:r1 + 1].mean(axis=1)
-    if rows.max() < 0.1:
+    al = b["opacity"]
+    w = coverage(a, [hex2rgb(lay["bg"]), WHITE, MARK_RGB], 1) / al
+    r0, r1 = max(0, int(b["y"] - 40)), int(b["y"] + b["h"] + 40)
+    c0, c1 = max(0, int(b["x"] - 40)), min(a.shape[1] - 1, int(b["x"] + b["w"] + 40))
+    rows = np.median(w[r0:r1 + 1, int(b["x"] + 10):int(b["x"] + b["w"] - 10)], axis=1)
+    tb = cross(rows)
+    if tb is None:
         return None
-    tb = cross(rows / rows.max())
-    rr0, rr1 = int(tb[0] + r0) + 4, int(tb[1] + r0) - 4
-    cols = near[rr0:rr1 + 1].mean(axis=0)
-    lr = cross(cols / cols.max())
-    return dict(x=lr[0], y=tb[0] + r0, w=lr[1] - lr[0], h=tb[1] - tb[0], color=b["color"])
+    y0, y1 = tb[0] + r0, tb[1] + r0
+    cols = np.median(w[int(y0 + 4):int(y1 - 4), c0:c1 + 1], axis=0)
+    lr = cross(cols)
+    if lr is None:
+        return None
+    return dict(x=lr[0] + c0, y=y0, w=lr[1] - lr[0], h=y1 - y0, color=b["color"], opacity=al)
 
 
 def _measure_element(cov, el, font, rows):
