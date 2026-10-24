@@ -17,7 +17,7 @@ import { makePost } from "../lib/post";
 import { glyphCell, toTex, glowCanvas, paperCanvas } from "../lib/textures";
 import { makeCanvas, sampleTextPoints } from "../lib/glyph";
 import { southBranchCanvas, northBranchCanvas, southFlowers, northSnow } from "../lib/branches";
-import { nearRoofs, farRoofs, ROOF_TOP, ROOF_H } from "../lib/roofs";
+import { nearRoofs, farRoofs, ROOF_TOP, ROOF_H, HIS_WINDOW, HER_WINDOW, hisLattice, herLattice } from "../lib/roofs";
 import { drawBranch, flowerBud } from "../lib/paint";
 import { moonGlyphs } from "./Chat";
 import { W, H, HW, lerp, prog, smooth, easeInOutCubic, easeOutCubic, easeInCubic, mulberry32, clamp } from "../lib/util";
@@ -31,8 +31,8 @@ const MC = { x: 960, y: 354 }; // the moon's centre (px). v4.0: 30 px higher (v3
 const MR = 182; // radius (px)
 const MOON_PAD = 1.1; // the moon's plane, relative to its disc
 const R_CLOSED = -400; // breath radius before the moon breathes: nothing open
-const WIN_S = { x: 318, y: 1004 }; // his window, in the south
-const WIN_N = { x: 1612, y: 996 }; // hers, in the north
+const WIN_S = { x: HIS_WINDOW.x, y: HIS_WINDOW.y }; // his window, in the south (v5.5: the lattice window of his house, lib/roofs; was 318, 1004)
+const WIN_N = { x: HER_WINDOW.x, y: HER_WINDOW.y }; // hers, in the north (v5.5: the lattice window of her house, lib/roofs; was 1612, 996)
 
 // vPx: where a fragment is in the px its layer was drawn in — so the light, the haze and the
 // crease stay on the things they belong to while the camera pushes in and the layers drift
@@ -504,15 +504,33 @@ export function createMoon(renderer: THREE.WebGLRenderer): SceneHandle {
   // snow in the north; the far town hazy in each half's air, in the middle layer (it drifts less as
   // the eye moves down after the fold), the near houses in front. v3.1 had one strip of flat black
   // shapes. Both run on below the frame's bottom edge.
-  const roofFar = new THREE.Mesh(new THREE.PlaneGeometry(1920, ROOF_H), reveal(toTex(farRoofs()), 0, layMid));
-  roofFar.position.copy(P(960, ROOF_TOP + ROOF_H / 2, 4.2));
-  midL.add(roofFar);
-  const roofMesh = new THREE.Mesh(new THREE.PlaneGeometry(1920, ROOF_H), reveal(toTex(nearRoofs(WIN_S, WIN_N)), 0));
+  // v5.5: no far town any more. Since v4.1 the south had none; in the north its roofs, as big as the
+  // near ones and lying on their ridges, read as second storeys (用户: "右侧的房屋是两层，是刻意设计吗"). Both
+  // halves are one row of near houses now.
+  void farRoofs;
+  void layMid;
+  const roofMesh = new THREE.Mesh(new THREE.PlaneGeometry(1920, ROOF_H), reveal(toTex(nearRoofs()), 0));
   roofMesh.position.copy(P(960, ROOF_TOP + ROOF_H / 2, 5));
   near.add(roofMesh);
   const winTex = toTex(glowCanvas(128, "255,186,110", 0.28));
+  // v5.5: the lights are their lattice windows (lib/roofs: HIS_WINDOW, HER_WINDOW): warm paper behind
+  // the same lattice, drawn at 4×
+  const litWindow = (win: { w: number; h: number }, lattice: typeof herLattice, c0: string, c1: string) => {
+    const k = 4, c = document.createElement("canvas");
+    c.width = win.w * k;
+    c.height = win.h * k;
+    const x = c.getContext("2d")!;
+    const g = x.createRadialGradient(c.width / 2, c.height * 0.55, 0, c.width / 2, c.height * 0.55, c.width * 0.75);
+    g.addColorStop(0, c0);
+    g.addColorStop(1, c1);
+    x.fillStyle = g;
+    x.fillRect(0, 0, c.width, c.height);
+    lattice(x, 0, 0, c.width, c.height, "rgba(74,40,24,0.95)", k);
+    return toTex(c);
+  };
+  const lights = [litWindow(HIS_WINDOW, hisLattice, "rgb(255,208,142)", "rgb(238,156,84)"), litWindow(HER_WINDOW, herLattice, "rgb(255,222,176)", "rgb(236,170,104)")];
   const windows = [WIN_S, WIN_N].map((w, i) => {
-    const core = new THREE.Mesh(new THREE.PlaneGeometry(26, 18), new THREE.MeshBasicMaterial({ color: i === 0 ? 0xffc27a : 0xffd9a8, transparent: true, opacity: 0, depthWrite: false }));
+    const core = new THREE.Mesh(new THREE.PlaneGeometry(HIS_WINDOW.w, HIS_WINDOW.h), new THREE.MeshBasicMaterial({ map: lights[i], transparent: true, opacity: 0, depthWrite: false }));
     core.position.copy(P(w.x, w.y, 6));
     const glow = new THREE.Mesh(new THREE.PlaneGeometry(150, 150), new THREE.MeshBasicMaterial({ map: winTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
     glow.position.copy(P(w.x, w.y, 6.5));

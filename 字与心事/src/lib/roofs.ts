@@ -10,6 +10,7 @@
 // Canvas px: x as the frame, y = layer y − TOP.
 import { makeCanvas } from "./glyph";
 import { mulberry32 } from "./util";
+import { lanternLattice } from "./lattice";
 
 export const ROOF_TOP = 780; // the canvas's top edge in the layer's px
 export const ROOF_H = 380;
@@ -271,7 +272,7 @@ export type RoofCanvas = { canvas: HTMLCanvasElement; windows: { south: { x: num
 const HAZE_S: RGB = [122, 96, 73]; // the south's air over the roofs (measured in v4.0 at 43.0 s)
 const MIST_S: RGB = [146, 116, 88]; // its mist, a little lighter: lit by the moon
 type HuiPal = { wallTop: RGB; wallFoot: RGB; tile: RGB; rim: [number, number, number, number]; stain: number; win: RGB };
-const HUI_NEAR: HuiPal = { wallTop: [160, 150, 136], wallFoot: [106, 97, 87], tile: [24, 21, 22], rim: [226, 210, 186, 0.42], stain: 0.16, win: [255, 190, 116] };
+const HUI_NEAR: HuiPal = { wallTop: [160, 150, 136], wallFoot: [106, 97, 87], tile: [44, 42, 45], rim: [226, 210, 186, 0.42], stain: 0.16, win: [255, 190, 116] };
 /** the near palette taken towards the air by h (0 near … 1 lost in it) */
 const huiPal = (h: number, dark = 0): HuiPal => {
   const w = (c: RGB) => mixc(mixc(c, [24, 20, 20], dark), HAZE_S, h);
@@ -301,6 +302,21 @@ function huiCap(ctx: C, xa: number, xb: number, y: number, th: number, p: HuiPal
     ctx.quadraticCurveTo(xe + sd * 4 * s, y + th * 0.5, xe - sd * 1 * s, y + th);
     ctx.closePath();
     ctx.fill();
+  }
+  // v5.5 · the slab as tiles, not an ink line (the user: "这黑色线条代表什么？在建筑中是什么逻辑？"): the
+  // dark grey of 黛瓦, its rows of tiles, its upper face lit a little by the warm moon, a row of tile
+  // ends (瓦当) along the eave — as much as the north's caps show (beiCap)
+  {
+    const lit = mixc(p.tile, [176, 158, 132], 0.3), deep = mixc(p.tile, [0, 0, 0], 0.15);
+    const g = ctx.createLinearGradient(0, y + th * 0.25, 0, y + th);
+    g.addColorStop(0, rgb(lit));
+    g.addColorStop(1, rgb(p.tile));
+    ctx.fillStyle = g;
+    ctx.fillRect(xa - o, y + th * 0.25, xb - xa + 2 * o, th * 0.75);
+    ctx.fillStyle = rgb(deep, 0.7);
+    for (let x = xa - o + 2; x < xb + o - 1; x += 4) ctx.fillRect(x, y + th * 0.3, 1, th * 0.55);
+    ctx.fillStyle = rgb(mixc(lit, [226, 210, 186], 0.35));
+    for (let x = xa - o + 2; x < xb + o - 1; x += 4) ctx.fillRect(x, y + th - 1.2, 1.2, 1.2);
   }
   if (p.rim[3] > 0.01) {
     ctx.strokeStyle = `rgba(${p.rim[0]},${p.rim[1]},${p.rim[2]},${p.rim[3]})`;
@@ -460,8 +476,312 @@ const southOnly = (ctx: C, draw: () => void) => {
   ctx.restore();
 };
 
-/** The near houses. WIN_S / WIN_N: his and her lit windows (layer px). */
-export function nearRoofs(WIN_S: { x: number; y: number }, WIN_N: { x: number; y: number }): HTMLCanvasElement {
+// ---------- v5.5 · her side: a hutong under old snow ----------
+// v4.0's north was four dark navy boxes with roofs of evenly spaced straight stripes (they read as
+// corrugated iron) and a flat-topped block at the edge (it read as a modern building) — drawn more
+// roughly than the south after v4.1 (the user: "总觉得右边的房子有点丑"). Now the north as the south's
+// counterpart: grey brick (青砖) and grey tile (灰瓦) under old snow — the snow lying in the furrows between
+// the rows of round tiles, a row of tile ends (瓦当) along each eave, the main ridge capped with snow and
+// lifting at its ends (蝎子尾); her house with a lattice window; the courtyard wall from the crease; her
+// gate (门楼) at the edge with its dark red doors. The moon is up to the left: every wall a shade darker
+// on its right. A cold mist low along the lane, as the south has its warm one.
+const HAZE_N: RGB = [51, 66, 92]; // the north's air over the roofs (measured at frame 1420)
+const MIST_N: RGB = [74, 90, 120];
+type BeiPal = { brickTop: RGB; brickFoot: RGB; tile: RGB; tileLit: RGB; snow: RGB; snowShade: RGB; wood: RGB; door: RGB; win: RGB };
+const BEI_NEAR: BeiPal = { brickTop: [96, 102, 118], brickFoot: [50, 55, 68], tile: [26, 29, 37], tileLit: [64, 70, 84], snow: [206, 214, 230], snowShade: [126, 140, 166], wood: [52, 32, 28], door: [104, 34, 28], win: [255, 214, 162] };
+const beiPal = (h: number): BeiPal => {
+  const w = (c: RGB) => mixc(c, HAZE_N, h);
+  return { brickTop: w(BEI_NEAR.brickTop), brickFoot: w(BEI_NEAR.brickFoot), tile: w(BEI_NEAR.tile), tileLit: w(BEI_NEAR.tileLit), snow: w(BEI_NEAR.snow), snowShade: w(BEI_NEAR.snowShade), wood: w(BEI_NEAR.wood), door: w(BEI_NEAR.door), win: BEI_NEAR.win };
+};
+const northOnly = (ctx: C, draw: () => void) => {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(960, -50, 1010, ROOF_H + 100);
+  ctx.clip();
+  draw();
+  ctx.restore();
+};
+
+/** a grey brick wall face x0…x1 from top down: courses, the odd brick a shade off, darker to the right */
+function beiWall(ctx: C, x0: number, x1: number, top: number, p: BeiPal, r: () => number, bottom = ROOF_H) {
+  const g = ctx.createLinearGradient(0, top, 0, Math.min(bottom, top + 170));
+  g.addColorStop(0, rgb(p.brickTop));
+  g.addColorStop(1, rgb(p.brickFoot));
+  ctx.fillStyle = g;
+  ctx.fillRect(x0, top, x1 - x0, bottom - top);
+  // the moon is up to the left: the right of the wall a shade darker
+  const sd = ctx.createLinearGradient(x0, 0, x1, 0);
+  sd.addColorStop(0, "rgba(8,10,16,0)");
+  sd.addColorStop(0.5, "rgba(8,10,16,0.05)");
+  sd.addColorStop(1, "rgba(8,10,16,0.22)");
+  ctx.fillStyle = sd;
+  ctx.fillRect(x0, top, x1 - x0, bottom - top);
+  // courses: a fine light mortar line every 6 px, the joints staggered
+  for (let y = top + 5, k = 0; y < bottom; y += 6, k++) {
+    ctx.fillStyle = "rgba(200,210,226,0.07)";
+    ctx.fillRect(x0, y, x1 - x0, 1);
+    ctx.fillStyle = "rgba(200,210,226,0.045)";
+    for (let x = x0 + (k % 2 ? 7 : 0); x < x1; x += 14) ctx.fillRect(x, y - 5, 1, 5);
+  }
+  // the odd brick lighter or darker
+  for (let i = 0; i < ((x1 - x0) * Math.min(bottom - top, 170)) / 260; i++) {
+    const bx = x0 + Math.floor((r() * (x1 - x0)) / 14) * 14 + (r() < 0.5 ? 7 : 0), by = top + 5 + Math.floor((r() * Math.min(bottom - top, 170)) / 6) * 6 - 5;
+    ctx.fillStyle = r() < 0.5 ? "rgba(220,228,240,0.05)" : "rgba(6,8,14,0.09)";
+    ctx.fillRect(bx + 1, by, 13, 5);
+  }
+}
+
+/** v5.5 · the north's cap on a yard wall or over a gate: huiCap's shape and size (so the caps of the two
+ *  halves lie at the same heights and are as thin — the user: "墙上的屋檐部分可以搞窄一些的"), in grey tile:
+ *  the slab with its rows of tiles, the ridge along the top with a thin line of snow on it, a row of
+ *  tile ends along the eave, its shadow on the wall */
+function beiCap(ctx: C, xa: number, xb: number, y: number, th: number, p: BeiPal, snow = 1.5) {
+  const o = Math.max(2, th * 0.7);
+  const g = ctx.createLinearGradient(0, y + th * 0.25, 0, y + th);
+  g.addColorStop(0, rgb(p.tileLit));
+  g.addColorStop(1, rgb(p.tile));
+  ctx.fillStyle = g;
+  ctx.fillRect(xa - o, y + th * 0.25, xb - xa + 2 * o, th * 0.75);
+  ctx.fillStyle = rgb(p.tile, 0.55);
+  for (let x = xa - o + 2; x < xb + o - 1; x += 4) ctx.fillRect(x, y + th * 0.3, 1, th * 0.55);
+  ctx.fillStyle = rgb(p.tile);
+  ctx.fillRect(xa - o * 0.4, y - th * 0.15, xb - xa + o * 0.8, th * 0.45);
+  ctx.fillStyle = rgb(mixc(p.tileLit, p.snow, 0.4));
+  for (let x = xa - o + 2; x < xb + o - 1; x += 4) ctx.fillRect(x, y + th - 1.2, 1.2, 1.2);
+  ctx.fillStyle = rgb(p.snow);
+  ctx.fillRect(xa - o * 0.4, y - th * 0.15 - snow + 0.5, xb - xa + o * 0.8, snow);
+  const sh = ctx.createLinearGradient(0, y + th, 0, y + th * 1.6);
+  sh.addColorStop(0, "rgba(8,10,16,0.35)");
+  sh.addColorStop(1, "rgba(8,10,16,0)");
+  ctx.fillStyle = sh;
+  ctx.fillRect(xa - o, y + th, xb - xa + 2 * o, th * 0.6);
+}
+
+/** a row of round tiles under snow, seen from the front: eave at eaveY, ridge at ridgeY; the ridge
+ *  capped and lifting at its ends (蝎子尾); tile ends along the eave; its shadow on the wall below */
+function beiRoof(ctx: C, x0: number, x1: number, ridgeY: number, eaveY: number, p: BeiPal, r: () => number, o: { tails?: boolean; ridge?: number; over?: number; cap?: number } = {}) {
+  const over = o.over ?? 8, rh = o.ridge ?? 7;
+  const ea = x0 - over, eb = x1 + over;
+  // the slope: dark tile
+  ctx.fillStyle = rgb(p.tile);
+  ctx.beginPath();
+  ctx.moveTo(ea, eaveY);
+  ctx.lineTo(x0 + 2, ridgeY);
+  ctx.lineTo(x1 - 2, ridgeY);
+  ctx.lineTo(eb, eaveY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  // old snow over the slope: brightest along the ridge, thinning to a ragged edge a little above the
+  // eave, where the dark tile shows
+  // (second draft: the slope's snow a shade darker than the snow lying along the top, so that reads as
+  // snow and not as a thicker eave — the user: "积雪的颜色和屋檐有点类似，看上去就相当于屋檐加粗了")
+  const sg = ctx.createLinearGradient(0, ridgeY, 0, eaveY);
+  sg.addColorStop(0, rgb(mixc(p.snow, p.tile, 0.3)));
+  sg.addColorStop(0.75, rgb(mixc(p.snowShade, p.tile, 0.25)));
+  sg.addColorStop(1, rgb(mixc(p.snowShade, p.tile, 0.4)));
+  ctx.fillStyle = sg;
+  ctx.beginPath();
+  ctx.moveTo(ea - 2, ridgeY - 2);
+  ctx.lineTo(eb + 2, ridgeY - 2);
+  for (let x = eb + 2; x > ea - 2; x -= 5 + r() * 9) ctx.lineTo(x, ridgeY + (eaveY - ridgeY) * (0.7 + r() * 0.2));
+  ctx.lineTo(ea - 2, ridgeY + (eaveY - ridgeY) * 0.8);
+  ctx.closePath();
+  ctx.fill();
+  // the rows of round tiles (筒瓦) under it, every 10 px at the eave, fanning a little: each a soft
+  // groove in the snow (shadow on its right, away from the moon), clear of snow near the eave
+  const n = Math.round((eb - ea) / 10);
+  for (let i = 0; i <= n; i++) {
+    const xe = ea + ((eb - ea) * i) / n, xr = x0 + 2 + ((x1 - x0 - 4) * i) / n;
+    ctx.strokeStyle = rgb(p.snowShade, 0.75);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(xr + 1.6, ridgeY + 1);
+    ctx.lineTo(xe + 1.6, eaveY);
+    ctx.stroke();
+    ctx.strokeStyle = rgb(p.tile, 0.35);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xr + 2.6, ridgeY + (eaveY - ridgeY) * 0.25);
+    ctx.lineTo(xe + 2.6, eaveY);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // the eave: a dark edge, the tile ends (瓦当) on the round tiles, each with a crumb of snow on it
+  ctx.fillStyle = rgb(p.tile);
+  ctx.fillRect(ea - 1, eaveY - 1, eb - ea + 2, 3);
+  for (let i = 0; i <= n; i++) {
+    const xe = ea + ((eb - ea) * i) / n;
+    ctx.fillStyle = rgb(p.tile);
+    ctx.beginPath();
+    ctx.arc(xe, eaveY + 2.5, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgb(p.tileLit, 0.7);
+    ctx.beginPath();
+    ctx.arc(xe - 0.7, eaveY + 2.1, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgb(p.snow, 0.8);
+    ctx.fillRect(xe - 2.2, eaveY - 1.5, 4.4, 1.6);
+  }
+  // the eave's shadow on the wall under it
+  const sh = ctx.createLinearGradient(0, eaveY + 3, 0, eaveY + 18);
+  sh.addColorStop(0, "rgba(6,8,14,0.55)");
+  sh.addColorStop(1, "rgba(6,8,14,0)");
+  ctx.fillStyle = sh;
+  ctx.fillRect(x0, eaveY + 3, x1 - x0, 15);
+  if (rh <= 0) {
+    // v5.5 second draft: one layer, as the south's caps (the user: "右边的边缘有两层，看上去好像偏下了一点"):
+    // no ridge band over the slope; the snow runs up to its top edge, and the ends of that edge lift
+    if (o.tails !== false)
+      for (const [sd, xe] of [[-1, x0 + 2], [1, x1 - 2]] as [number, number][]) {
+        ctx.fillStyle = rgb(p.tile);
+        ctx.beginPath();
+        ctx.moveTo(xe - sd * 12, ridgeY - 1);
+        ctx.quadraticCurveTo(xe + sd * 2, ridgeY - 1, xe + sd * 5, ridgeY - 8);
+        ctx.lineTo(xe + sd * 7, ridgeY - 6.5);
+        ctx.quadraticCurveTo(xe + sd * 5, ridgeY + 2, xe - sd * 2, ridgeY + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+    // a thin line of old snow lying along the top edge, over it (third draft: 4 px, whiter, uneven — the
+    // user: "积雪不要搞这么粗吧？积雪我觉得上一版的感觉就还可以": back to the second draft's line)
+    const cap = o.cap ?? 2.5;
+    ctx.fillStyle = rgb(p.snow);
+    ctx.fillRect(x0 + 2, ridgeY - cap, x1 - x0 - 4, cap + 0.5);
+    return;
+  }
+  // the main ridge (正脊): a band of tile, snow lying along it, its ends lifting
+  const ra = x0 - 3, rb = x1 + 3;
+  ctx.fillStyle = rgb(p.tile);
+  ctx.fillRect(ra, ridgeY - rh, rb - ra, rh + 1);
+  if (o.tails !== false)
+    for (const [sd, xe] of [[-1, ra], [1, rb]] as [number, number][]) {
+      ctx.beginPath();
+      ctx.moveTo(xe - sd * 14, ridgeY - rh);
+      ctx.quadraticCurveTo(xe + sd * 2, ridgeY - rh, xe + sd * 6, ridgeY - rh - 9);
+      ctx.lineTo(xe + sd * 8.5, ridgeY - rh - 7.5);
+      ctx.quadraticCurveTo(xe + sd * 6, ridgeY - 1, xe - sd * 2, ridgeY + 1);
+      ctx.closePath();
+      ctx.fill();
+    }
+  // snow on the ridge: thick, a little uneven, brightest on the moon's side
+  const rg = ctx.createLinearGradient(ra, 0, rb, 0);
+  rg.addColorStop(0, rgb(p.snow));
+  rg.addColorStop(1, rgb(mixc(p.snow, p.snowShade, 0.35)));
+  ctx.fillStyle = rg;
+  let x = ra + 2;
+  while (x < rb - 2) {
+    const len = Math.min(rb - 2 - x, 24 + r() * 50);
+    ctx.beginPath();
+    ctx.roundRect(x, ridgeY - rh - 2.6 - r() * 0.8, len, 3.4 + r() * 1.2, 2);
+    ctx.fill();
+    x += len + (r() < 0.25 ? 2 + r() * 5 : 0);
+  }
+}
+
+/** 步步锦: the lattice of a northern window or door panel, in a w × h box at (x, y) (its top left) */
+export function stepLattice(ctx: C, x: number, y: number, w: number, h: number, col: string, lw = 1) {
+  ctx.strokeStyle = col;
+  ctx.lineWidth = lw;
+  ctx.strokeRect(x + lw / 2, y + lw / 2, w - lw, h - lw);
+  // nested frames stepping in, joined by short bars
+  const n = 2;
+  for (let k = 1; k <= n; k++) {
+    const ix = (w * k) / (2 * n + 1.6), iy = (h * k) / (2 * n + 1.6);
+    ctx.strokeRect(x + ix, y + iy, w - 2 * ix, h - 2 * iy);
+    const px = (w * (k - 1)) / (2 * n + 1.6), py = (h * (k - 1)) / (2 * n + 1.6);
+    ctx.beginPath();
+    for (const fx of [0.5]) {
+      ctx.moveTo(x + w * fx, y + py);
+      ctx.lineTo(x + w * fx, y + iy);
+      ctx.moveTo(x + w * fx, y + h - py);
+      ctx.lineTo(x + w * fx, y + h - iy);
+    }
+    for (const fy of [0.5]) {
+      ctx.moveTo(x + px, y + h * fy);
+      ctx.lineTo(x + ix, y + h * fy);
+      ctx.moveTo(x + w - px, y + h * fy);
+      ctx.lineTo(x + w - ix, y + h * fy);
+    }
+    ctx.stroke();
+  }
+}
+
+/** v5.5 · the two houses' windows, in place of small high ones (the user: "这个有点像小天窗的感觉了，一点点大，
+ *  还在高处"; "完全可以左右都对齐吧？只要有略微的样式差异就行了"): one big lattice window in the middle of
+ *  each house, the same size, at the same height, mirrored about the crease (x → 1920 − x) as the
+ *  houses are (his body 220–416, hers 1504–1700). His: a dark stone frame in the white wall under a
+ *  little tiled hood, 灯笼锦 (the lattice whose shadow lies on the page in the ending); hers: a pale
+ *  stone surround (窗套) in the brick, 步步锦. HIS_WINDOW / HER_WINDOW are the openings (layer px);
+ *  scenes/moon lights them with the same lattices */
+export const HIS_HOUSE = { x0: 220, x1: 416 };
+export const HER_HOUSE = { x0: 1920 - HIS_HOUSE.x1, x1: 1920 - HIS_HOUSE.x0 };
+export const HIS_WINDOW = { x: (HIS_HOUSE.x0 + HIS_HOUSE.x1) / 2, y: 1026, w: 78, h: 48 };
+export const HER_WINDOW = { ...HIS_WINDOW, x: 1920 - HIS_WINDOW.x };
+/** cols × rows 步步锦 panels with 2-unit bars between them, in the opening w × h at (x, y); s: px per
+ *  unit (the scene's light draws the same lattice at 4×, so the two lie line on line) */
+export function gridLattice(ctx: C, x: number, y: number, w: number, h: number, cols: number, rows: number, col: string, s = 1) {
+  const W = w / s, H = h / s, cw = (W - 2 * (cols - 1)) / cols, ch = (H - 2 * (rows - 1)) / rows;
+  ctx.fillStyle = col;
+  for (let i = 1; i < cols; i++) ctx.fillRect(x + (i * cw + (i - 1) * 2) * s, y, 2 * s, h);
+  for (let j = 1; j < rows; j++) ctx.fillRect(x, y + (j * ch + (j - 1) * 2) * s, w, 2 * s);
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) stepLattice(ctx, x + i * (cw + 2) * s, y + j * (ch + 2) * s, cw * s, ch * s, col, s);
+}
+/** her window's lattice: 4 × 2 步步锦 panels (the scene's light draws it too, at 4×) */
+export function herLattice(ctx: C, x: number, y: number, w: number, h: number, col: string, s = 1) {
+  gridLattice(ctx, x, y, w, h, 4, 2, col, s);
+}
+const HUI_DOOR: RGB = [66, 46, 36];
+/** v5.5: both gates (and their hoods) 6 px higher (the user: "把左右的门都往上移一点点") */
+const GATE_DY = 6;
+/** a pair of ring knockers (铺首) either side of a gate's seam at x, y (canvas px) */
+function knockers(ctx: C, x: number, y: number) {
+  ctx.fillStyle = "rgba(200,166,118,0.75)";
+  for (const dx of [-4, 4]) {
+    ctx.beginPath();
+    ctx.arc(x + dx, y, 1.4, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+}
+/** his window's lattice: two leaves of 灯笼锦 either side of a 2-unit mullion (drawn at 4× by the scene too) */
+export function hisLattice(ctx: C, x: number, y: number, w: number, h: number, col: string, s = 1) {
+  const leaf = (w / s - 2) / 2;
+  ctx.fillStyle = col;
+  ctx.fillRect(x + leaf * s, y, 2 * s, h);
+  lanternLattice(ctx, x, y, leaf * s, h, 2 * s);
+  lanternLattice(ctx, x + (leaf + 2) * s, y, leaf * s, h, 2 * s);
+}
+/** his window: the dark stone frame in the white wall, the paper, the lattice, the little hood over it */
+function huiBigWindow(ctx: C, p: HuiPal) {
+  const { x, w, h } = HIS_WINDOW, y = HIS_WINDOW.y - ROOF_TOP, sur = 5;
+  const xa = x - w / 2, ya = y - h / 2;
+  ctx.fillStyle = rgb(mixc(p.wallFoot, [34, 30, 28], 0.62));
+  ctx.fillRect(xa - sur, ya - sur, w + 2 * sur, h + 2 * sur);
+  ctx.fillStyle = rgb(mixc([60, 30, 14], p.win, 0.35));
+  ctx.fillRect(xa, ya, w, h);
+  hisLattice(ctx, xa, ya, w, h, "rgb(44,26,16)");
+  huiCap(ctx, xa - sur - 6, xa + w + sur + 6, ya - sur - 10, 7, p, [true, true]);
+}
+/** her house: brick; the window in a stone surround, recessed (a shadow inside its top and left) */
+function beiWallWindow(ctx: C, top: number, p: BeiPal, r: () => number) {
+  const { x0, x1 } = HER_HOUSE, { x, w, h } = HER_WINDOW, y = HER_WINDOW.y - ROOF_TOP, sur = 6;
+  beiWall(ctx, x0, x1, top, p, r);
+  const xa = x - w / 2, ya = y - h / 2;
+  ctx.fillStyle = rgb(mixc(p.brickTop, [205, 210, 220], 0.32));
+  ctx.fillRect(xa - sur, ya - sur, w + 2 * sur, h + 2 * sur);
+  ctx.fillStyle = rgb(mixc(p.brickTop, [0, 0, 0], 0.35));
+  ctx.fillRect(xa - sur, ya + h + sur, w + 2 * sur, 1);
+  ctx.fillStyle = rgb(mixc(p.brickTop, [150, 160, 180], 0.35));
+  ctx.fillRect(xa, ya, w, h);
+  herLattice(ctx, xa, ya, w, h, rgb(p.wood, 0.95));
+  ctx.fillStyle = "rgba(10,12,20,0.35)";
+  ctx.fillRect(xa, ya, w, 2);
+  ctx.fillRect(xa, ya + 2, 2, h - 2);
+}
+
+/** The near houses (his and her windows: HIS_WINDOW, HER_WINDOW). */
+export function nearRoofs(): HTMLCanvasElement {
   const c = makeCanvas(1920, ROOF_H);
   const ctx = c.getContext("2d")!;
   const r = mulberry32(77);
@@ -477,13 +797,51 @@ export function nearRoofs(WIN_S: { x: number; y: number }, WIN_N: { x: number; y
     gableHouse(scratch, 566, 220, Y(992), 2, 13, sp, r);
     eaveHouse(scratch, 676, 300, Y(1004), sp, r, 0.55);
   }
-  // north, from the crease: a low roof, two snowy houses (hers the second), a flat block at the edge
-  snowHouse(ctx, 962, 270, Y(1002), np, r);
-  snowHouse(ctx, 1240, 236, Y(990), np, r);
-  snowHouse(ctx, 1488, 256, Y(950), np, r, { x: WIN_N.x, y: Y(WIN_N.y) });
-  snowHouse(ctx, 1752, 200, Y(912), np, r, undefined, true);
-  ctx.fillStyle = "rgba(12,10,10,0.95)";
-  ctx.fillRect(WIN_N.x - 16, Y(WIN_N.y) - 12, 32, 24);
+  void np;
+  // v5.5 · the north, the south's counterpart and as high (the user: "衔接处是不是应该一样高才对？然后它们大致
+  // 整体应该差不多高"): mirrored about the crease (x → 1920 − x), the courtyard wall meets the south's
+  // at the crease at the same height (1046); the house near the crease as the south's (its ridge at
+  // 992); the wall on, her gate in it under a little tiled hood; her house as high as his (950), her
+  // window where the scene lights it; the wall on to the edge
+  const rn = mulberry32(5501);
+  northOnly(ctx, () => {
+    const wall = beiPal(0.1), side = beiPal(0.08), hers = beiPal(0);
+    // every top here (the tile's top edge; the snow lies over it) is the top of
+    // its counterpart in the south: the yard wall's cap y − 8 (huiCap at y − 7, its ridge tiles 1 px
+    // higher), the gate's hood 1052, the house by the crease 988, his house 943.5
+    // (second draft: the tile's top edge at the south's top, the snow lying over it — the user: "如果右边
+    // 上面有一点积雪的话，那积雪的部分可以超过左边屋檐的部分吧")
+    const ridgeAt = (topY: number) => Y(topY);
+    /** a stretch of the courtyard wall, x0…x1, as the south's yardWall(x0, x1, y): its cap's top at y − 8 */
+    const yardWall = (x0: number, x1: number, y: number) => {
+      beiWall(ctx, x0, x1, Y(y), wall, rn);
+      beiCap(ctx, x0 + 4, x1 - 4, Y(y) - 7, 7, wall); // as the south's huiCap(x0 + 4, x1 − 4, Y(y) − 7, 7)
+    };
+    yardWall(950, 1052, 1046);
+    yardWall(1208, 1512, 1040);
+    yardWall(1692, 1960, 1030);
+    // her gate in the wall, under its hood
+    ctx.fillStyle = rgb(mixc(wall.brickFoot, [8, 8, 12], 0.4));
+    ctx.fillRect(1418, Y(1068 - GATE_DY), 40, ROOF_H);
+    ctx.fillStyle = rgb(mixc(wall.door, [10, 8, 8], 0.25));
+    ctx.fillRect(1424, Y(1074 - GATE_DY), 28, ROOF_H);
+    ctx.fillStyle = "rgba(10,6,6,0.6)";
+    ctx.fillRect(1437, Y(1074 - GATE_DY), 2, ROOF_H);
+    knockers(ctx, 1438, Y(1090 - GATE_DY));
+    // its hood: the south's (huiCap(452, 512, …, 7)) mirrored, with less snow than the walls
+    beiCap(ctx, 1408, 1468, Y(1060 - GATE_DY), 7, wall, 1);
+    // the house near the crease: its top at 988, a window with a light in it
+    const sr = ridgeAt(988);
+    // (its back to the lane, as such houses have: brick, no window)
+    beiWall(ctx, 1048, 1212, sr + 26, side, rn);
+    beiRoof(ctx, 1048, 1212, sr, sr + 24, side, rn, { ridge: 0 });
+    // her house, as high as his (943.5) and as wide (HER_HOUSE); her window in its middle (lit by the scene)
+    const hr = ridgeAt(943.5);
+    beiWallWindow(ctx, hr + 28, hers, rn);
+    beiRoof(ctx, HER_HOUSE.x0, HER_HOUSE.x1, hr, hr + 26, hers, rn, { ridge: 0 });
+    // a cold mist low along the lane
+    huiMist(ctx, 950, 1960, Y(1000), 34, 0.3, rn, MIST_N);
+  });
   // v4.1 · the south, near (the poem's lines span x 465–1455 and end 946 px down; this layer rises
   // 38 px after the fold, so between those x everything here starts at 988 or lower)
   const rs = mulberry32(4101);
@@ -504,20 +862,21 @@ export function nearRoofs(WIN_S: { x: number; y: number }, WIN_N: { x: number; y
     yardWall(-30, 228, 1030);
     yardWall(408, 712, 1040);
     yardWall(868, 990, 1046);
-    // his gate in it, under its little tiled hood (门罩)
+    // his gate in it, under its little tiled hood (门罩): two wooden leaves, as her gate (v5.5: was a dark
+    // opening — the user: "那个门却是黑的一个洞")
     ctx.fillStyle = rgb(mixc(yard.wallFoot, [60, 54, 48], 0.5));
-    ctx.fillRect(462, Y(1068), 40, ROOF_H);
-    ctx.fillStyle = "rgba(14,11,10,0.95)";
-    ctx.fillRect(468, Y(1074), 28, ROOF_H);
-    huiCap(ctx, 452, 512, Y(1060), 7, yard, [true, true]);
-    // the house near the crease: one step a side, a small window, a light in it
-    huiHouse(ctx, 790, 164, Y(992), 1, 12, end, rs, [{ x: 812, y: Y(1034), w: 11, h: 14, lit: 0.75, hood: true }]);
-    // his house: two steps a side; his window (lit by the scene, at its own moment) under a hood, and
-    // a smaller one below it
-    huiHouse(ctx, 318, 196, Y(948), 2, 13, his, rs, [
-      { x: WIN_S.x, y: Y(WIN_S.y), w: 30, h: 22, hood: true, frameOnly: true },
-      { x: 266, y: Y(1052), w: 11, h: 14 },
-    ]);
+    ctx.fillRect(462, Y(1068 - GATE_DY), 40, ROOF_H);
+    ctx.fillStyle = rgb(HUI_DOOR);
+    ctx.fillRect(468, Y(1074 - GATE_DY), 28, ROOF_H);
+    ctx.fillStyle = "rgba(14,9,6,0.6)";
+    ctx.fillRect(481, Y(1074 - GATE_DY), 2, ROOF_H);
+    knockers(ctx, 482, Y(1090 - GATE_DY));
+    huiCap(ctx, 452, 512, Y(1060 - GATE_DY), 7, yard, [true, true]);
+    // the house near the crease: one step a side; no window (v5.5, as hers: its back to the lane)
+    huiHouse(ctx, 790, 164, Y(992), 1, 12, end, rs);
+    // his house: two steps a side; his window in its middle (lit by the scene)
+    huiHouse(ctx, (HIS_HOUSE.x0 + HIS_HOUSE.x1) / 2, HIS_HOUSE.x1 - HIS_HOUSE.x0, Y(948), 2, 13, his, rs);
+    huiBigWindow(ctx, his);
   });
   return c;
 }
