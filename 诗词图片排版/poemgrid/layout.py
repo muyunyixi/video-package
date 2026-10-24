@@ -5,7 +5,7 @@
 """
 
 from . import template as T
-from .glyphs import CLOSE, FULL, OPEN
+from .glyphs import CLOSE, FULL, OPEN, PUNCT
 
 
 # ---------------- 文本与小黄标标记 ----------------
@@ -58,6 +58,25 @@ def cells(font, text, size, axis=True):
         out.append(dict(ch=ch, left=x, width=c, pen=pen))
         x += c
     return out, x
+
+
+def edges(font, text, size, axis=True, rule="mixed"):
+    """一行的左右边界（相对行起点）。
+
+    rule="mixed"：行首、行尾是汉字取字格外缘，是标点取墨迹（正文用；与 公共/字体处理规范 第三节第 5 条相同）；
+    rule="ink"：两端都取墨迹（署名用：署名不在网格里，按看得见的字绝对居中）。
+    """
+    cs, _ = cells(font, text, size, axis)
+    k = size / font.upm
+    inked = [(c, font.glyph(c["ch"])) for c in cs if not font.glyph(c["ch"])["blank"]]
+    (c0, g0), (c1, g1) = inked[0], inked[-1]
+    ink_l = c0["left"] + c0["pen"] + g0["xmin"] * k
+    ink_r = c1["left"] + c1["pen"] + g1["xmax"] * k
+    if rule == "ink":
+        return ink_l, ink_r
+    left = ink_l if PUNCT.search(c0["ch"]) else c0["left"]
+    right = ink_r if PUNCT.search(c1["ch"]) else c1["left"] + c1["width"]
+    return left, right
 
 
 def place(font, text, size, x_left, baseline, axis=True, color=T.WHITE, role=""):
@@ -128,19 +147,35 @@ def build(cfg, font, marks_override=None):
     n = len(texts)
     v = vertical(font, tpl, n)
 
+    # 水平（v1.3）：先按网格排好每行；再按“汉字取字格外缘、标点取墨迹”的两端边界在画布中线居中；
+    # 主左轴 x0 = 排好后最宽一行的左格，主标题、横线、宋词副标题底块都左对齐它。
     body_size = tpl["body"][0] * S
     widths = [cells(font, t, body_size)[1] if t else 0.0 for t in texts]
     wmax = max(widths)
-    x0 = (T.OUT_W - wmax) / 2                     # 最宽一行居中，它的左格 = 主左轴
     align = cfg.get("body_align", tpl["body_align"])
+    bnds = [edges(font, t, body_size) if t else None for t in texts]
+    cx = T.OUT_W / 2
+    if align == "left":                            # 近体诗：各行共用一张网格，整块居中
+        L = min(b[0] for b in bnds if b)
+        R = max(b[1] for b in bnds if b)
+        starts = [cx - (L + R) / 2] * n
+    else:                                          # 宋词：每行各自居中
+        starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
+    x0 = min(s for s, w in zip(starts, widths) if w == wmax)
 
     lay = dict(mode=tpl["name"], tpl=tpl, bg=tpl["bg"], x0=x0, wmax=wmax, align=align,
                vertical=v, rule=None, sub_box=None, marks=[])
     lines = []
     for i, t in enumerate(texts):
-        xl = x0 if align == "left" else (T.OUT_W - widths[i]) / 2
-        lines.append(place(font, t, body_size, xl, v["body"][i], role=f"正文第{i + 1}行"))
+        lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行"))
     lay["body"] = lines
+    # 看得见的墨迹中心离画布中线多少（按上面的规则总是略偏右：首字左边那点留白的一半）
+    inked = [l for l in lines if l["text"]]
+
+    def ink_c(ls):
+        gl = [g for l in ls for g in l["glyphs"] if g["ink"]]
+        return (min(g["ink"][0] for g in gl) + max(g["ink"][2] for g in gl)) / 2 - cx
+    lay["ink_offset"] = [ink_c(inked)] if align == "left" else [ink_c([l]) for l in inked]
     lay["title"] = place(font, cfg["title"], tpl["title"][0] * S, x0, v["title"], role="主标题")
 
     sub_text = cfg.get("subtitle", "")
@@ -161,10 +196,11 @@ def build(cfg, font, marks_override=None):
         lay["sub_box"] = dict(x=x0, y=top, w=sub_w + 2 * pad, h=(font.ascent - font.descent) * k + 2 * pad,
                               color=box["color"], opacity=box["opacity"])
 
+    # 署名：字照原样排（半角按步进），整行按墨迹（最左一笔到最右一笔）在画布中线绝对居中
     sign = cfg.get("sign", "")
     sign_size = tpl["sign_size"] * S
-    sign_w = cells(font, sign, sign_size, axis=False)[1] if sign else 0.0
-    lay["sign"] = place(font, sign, sign_size, T.OUT_W / 2 - sign_w / 2, v["sign"], axis=False, role="署名")
+    sl, sr = edges(font, sign, sign_size, axis=False, rule="ink") if sign.strip() else (0.0, 0.0)
+    lay["sign"] = place(font, sign, sign_size, cx - (sl + sr) / 2, v["sign"], axis=False, role="署名")
 
     for i, (line, ms) in enumerate(zip(lines, marks)):
         for k in sorted(ms):

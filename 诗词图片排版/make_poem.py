@@ -60,7 +60,14 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
     L.append(f"输出：{out_png}（{T.OUT_W}×{T.OUT_H}）")
     L.append("")
     L.append("一、版式（输出像素）")
-    L.append(f"  主左轴 x0 = {lay['x0']:.2f}（最宽一行字格宽 {lay['wmax']:.2f}，在画布上居中）；正文{'左对齐于 x0' if lay['align'] == 'left' else '每行各自居中'}")
+    L.append(f"  主左轴 x0 = {lay['x0']:.2f}（最宽一行字格宽 {lay['wmax']:.2f}；按汉字字格、标点墨迹的两端边界居中）；"
+             f"正文{'各行左对齐、整块居中' if lay['align'] == 'left' else '每行各自居中'}")
+    offs = lay["ink_offset"]
+    warn = "  ← 偏右超过 4 px，首字左边留白大，看看要不要处理" if max(offs) > 4 else ""
+    L.append("  看得见的正文墨迹中心离画布中线：" + "、".join(fmt(o) for o in offs) + " px（总是略偏右，是首字左留白的一半）" + warn)
+    s = [g for g in lay["sign"]["glyphs"] if g["ink"]]
+    if s:
+        L.append(f"  署名墨迹中心 {(s[0]['ink'][0] + s[-1]['ink'][2]) / 2:.2f}（按墨迹绝对居中）")
     v = lay["vertical"]
     parts = [f"主标题 {v['title']:.2f}"]
     if "rule" in v:
@@ -102,6 +109,8 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
         L.append("")
         w0, h0 = ref["size"]
         L.append(f"四、参考图对照（参考图 {w0}×{h0}，统一到 {T.OUT_W}×{T.OUT_H} 比；正数 = 参考图偏下/偏右）")
+        L.append("  注：稿定里排的图按字格居中（“。”右边的空白也算进行宽），水平方向普遍比本规则偏左约 12 px，"
+                 "署名偏左约 2 px，这是规则不同，不是错；看纵向和小黄标的偏差即可。")
         for w in ref["warnings"]:
             L.append(f"  ！{w}")
         L.append("  元素          基线Δy    左边Δx    右边Δx    字号（标准）")
