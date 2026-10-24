@@ -5,7 +5,7 @@
 // a fibre across the night sea. Day turns to dusk, blue hour, then night.
 import * as THREE from "three";
 import cues from "../cues.json";
-import { makePost } from "../lib/post";
+import { makePost, untonedHex } from "../lib/post";
 import { paperCanvas, glowCanvas, toTex } from "../lib/textures";
 import { makeCanvas } from "../lib/glyph";
 import { gooseAtlas } from "../lib/birds";
@@ -77,10 +77,10 @@ function threadY(x: number) {
   if (x < X3) return lerp(beaconPath(x), wireY(x), smooth(clamp((x - X2) / 3)));
   return lerp(wireY(x), fiberY(x), smooth(clamp((x - X3) / 4)));
 }
-function threadR(x: number) {
-  const b = smooth(clamp((x - X2 + 0.6) / 1.2));
-  const c = smooth(clamp((x - X3 + 0.6) / 1.2));
-  return lerp(lerp(0.034, 0.03, b), 0.046, c);
+// v5.6: one red silk thread from the goose to her phone, as thick all the way (v4.x–v5.5: 0.03 as the
+// telegraph wire, 0.046 as the fibre)
+function threadR(_x: number) {
+  return 0.034;
 }
 
 // sky stage: 0 day · 1 dusk · 2 blue hour · 3 night
@@ -464,23 +464,30 @@ export function createThread(renderer: THREE.WebGLRenderer): SceneHandle {
         float x = vUv.x; float v = vUv.y; float t = uF / 30.0;
         if (x > uHead) discard;
         float shade = 0.55 + 0.45 * cos((v - 0.18) * 6.2832);
-        vec3 verm = vec3(0.75, 0.17, 0.15);
+        // v5.6: the thread's body shows as 朱砂 (#c0302c, as the seal, 心事, her line; measured 190, 42, 37 at
+        // 10 s; v4.0–v5.5: (0.75, 0.17, 0.15), which showed as 75, 14, 7 — darker than every other red in the
+        // film — the user: "是不是可以让它更浅一些……让它们保持统一"). Found by rendering and measuring, not
+        // worked out: the tube's shading and the scene's light take most of it
+        vec3 verm = vec3(4.75, 0.48, 0.44);
         // silk: smooth red with a running sheen
         float sheen = pow(max(0.0, cos((v - 0.12) * 6.2832)), 14.0);
         vec3 silk = verm * shade * 1.05 + vec3(1.0, 0.72, 0.62) * sheen * (0.45 + 0.25 * sin(x * 2.0 - t * 3.0));
-        silk *= mix(1.0, 1.25, clamp(uStage, 0.0, 1.0)); // warmer at dusk
-        // wire: dark metal with travelling signal pulses (morse-like)
+        // v5.6: the same red silk all the way — the poles hold it, it lies across the night sea — and the
+        // same red at every hour (the user: "红丝线不用换吧？然后要保证红丝线的颜色是一致的"); the red lights
+        // still run along it, as before: between the poles the telegraph's pulses (morse-like), over the
+        // sea the fibre's beads of light ("线上跑的红点不用去掉啊。本来就是意象。"). Until v5.5 it warmed by
+        // 1.25 at dusk, turned to dark metal wire between the poles (about 12.8–15.3 s) and to a fibre
+        // glowing all along over the sea
         float k = x * 1.6 - t * 9.0;
         float cellv = floor(k);
         float on = step(0.45, h(cellv * 1.7)) * step(fract(k), mix(0.25, 0.8, h(cellv * 3.3)));
-        vec3 wire = vec3(0.13, 0.13, 0.15) * shade + vec3(0.9, 0.85, 0.8) * pow(max(0.0, cos((v - 0.1) * 6.2832)), 30.0) * 0.35;
-        wire += vec3(2.6, 0.7, 0.45) * on;
-        // fibre: glowing core with streaming light
+        // the fibre's light as before (its running pattern, as bright), only the part of it above the
+        // line's own glow, so between the lights the line is the silk
         float stream = 0.6 + 0.4 * sin(x * 3.0 - t * 22.0) + 0.6 * smoothstep(0.92, 1.0, fract(x * 0.35 - t * 2.2));
-        vec3 fibre = vec3(3.2, 0.9, 0.62) * stream * (0.75 + 0.25 * shade) + vec3(2.0, 1.6, 1.4) * pow(max(0.0, cos((v - 0.25) * 6.2832)), 6.0);
+        vec3 lights = vec3(3.2, 0.9, 0.62) * (0.75 + 0.25 * shade) * max(0.0, stream - 0.55) * 1.6;
         float b = smoothstep(uX2 - 0.4, uX2 + 0.4, x);
         float c = smoothstep(uX3 - 0.4, uX3 + 0.4, x);
-        vec3 col = mix(mix(silk, wire, b), fibre, c);
+        vec3 col = silk + vec3(2.6, 0.7, 0.45) * on * b * (1.0 - c) + lights * c;
         float tip = smoothstep(uHead, uHead - 0.25, x);
         gl_FragColor = vec4(col, tip);
       }`,
@@ -715,8 +722,10 @@ export function createThread(renderer: THREE.WebGLRenderer): SceneHandle {
     ctx.fillRect(16, 120, 480, 2);
     // her phone: his message has come in, so it sits on the left, as received messages do
     const bg = ctx.createLinearGradient(56, 420, 386, 540);
-    bg.addColorStop(0, "#cc3a32");
-    bg.addColorStop(1, "#a12623");
+    // v5.6: the bubbles' red (scenes/Chat), shown through the tone mapping (was #cc3a32 → #a12623)
+    bg.addColorStop(0, untonedHex("#d74139"));
+    bg.addColorStop(0.6, untonedHex("#c0302c"));
+    bg.addColorStop(1, untonedHex("#a92927"));
     ctx.fillStyle = bg;
     ctx.beginPath();
     ctx.roundRect(40, 420, 340, 118, [30, 30, 30, 8]);

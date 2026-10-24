@@ -6,7 +6,7 @@
 
 ## 一、这是什么
 
-- 用户（署名 muyun）和 Claude 一起做的短片。已经做完的是《字与心事》：一部用代码生成的诗词短片，诗是桃子的；画面、动效、排字、声音全部由代码生成（Remotion 组织时间线，three.js 画场景，React 叠文字层，Python 合成声音），除字体外不用任何图片、视频、音频素材，也不用视频模型。v5.5（74.3 秒，2026-10-24）。
+- 用户（署名 muyun）和 Claude 一起做的短片。已经做完的是《字与心事》：一部用代码生成的诗词短片，诗是桃子的；画面、动效、排字、声音全部由代码生成（Remotion 组织时间线，three.js 画场景，React 叠文字层，Python 合成声音），除字体外不用任何图片、视频、音频素材，也不用视频模型。v5.6（74.3 秒，2026-10-25）。
 - 以后的片子可能很不一样：也许还和国风有关，但形式可以完全不同，比如河图的音乐 MV。做法按那部片子的目标重新选，不必照《字与心事》来。
 - 两处存放，目录一一对应：
 
@@ -95,8 +95,8 @@
 |---|---|
 | `src/lib/ink.ts`、`render/hw_metrics.py`（生成 `src/gen/hw_metrics.json`） | 网格排：字形尺寸从字体文件读；lineInk、cellOf、penInCell |
 | `src/lib/glyph.ts`、`src/lib/textures.ts` | canvas 里写字、三维场景里的单字贴图，同一套排字规则 |
-| `src/lib/paint.ts`、`seep.tsx`、`post.ts`、`sdf.ts`、`ThreeLayer.tsx` | 墨渗、后期、three.js 图层 |
-| `render/build.mjs`、`build_v51.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v55.sh`、`link_v55.sh`、`encode_v51.sh`、`verify_final.py`、`verify_seam.py` | 打包（build_v51：片尾透出的源码固定用 v4.5 那份）、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v55 + link_v55；月亮段聚圆那几帧要从 1115 帧起连续渲，见 README）、编码（encode_v51：两版都换成 BT.709 并标全；高清版即平台上传版，《字与心事》取平均 12 Mbps 的可变码率（maxrate 16M、缓冲 16M；不把每秒卡在 16 Mbps 以内，那样首尾接缝会跳）；单文件版接缝前后压得细）、交付前的检查（含颜色标记、码率峰值、解码后的首尾接缝） |
+| `src/lib/paint.ts`、`seep.tsx`、`post.ts`、`sdf.ts`、`ThreeLayer.tsx` | 墨渗、后期、three.js 图层（`post.ts` 的 `untoned`、`untonedHex`：经过色调映射的场景里，让颜色在画面上量出来就是定下的值） |
+| `render/build.mjs`、`build_v51.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v56.sh`、`link_v56.sh`、`encode_v51.sh`、`verify_final.py`、`verify_seam.py` | 打包（build_v51：片尾透出的源码固定用 v4.5 那份）、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v56 + link_v56；月亮段聚圆那几帧要从 1115 帧起连续渲，见 README）、编码（encode_v51：两版都换成 BT.709 并标全；高清版即平台上传版，《字与心事》取平均 12 Mbps 的可变码率（maxrate 16M、缓冲 16M；不把每秒卡在 16 Mbps 以内，那样首尾接缝会跳）；单文件版接缝前后压得细）、交付前的检查（含颜色标记、码率峰值、解码后的首尾接缝） |
 | `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v54.py` | 乐器与音效合成（笛子一句的末音用 `flute_line` 的 `tail` 渐弱收住）、母带；总谱的写法（节奏组的写法见总谱末尾的 K 段） |
 | `cover/kit.ts`、`cover/lines2.tsx`、`cover/measure_shannan.py`；`cover/lines.tsx`、`cover/measure_ripple.py` | 线画封面（「山南海北」：线要互相遮挡的画法；「涟漪」：逐像素按线的距离画）；在导出的图上量字和线 |
 | `src/lib/roofs.ts`、`src/lib/lattice.ts` | 中式房屋：徽派的马头墙、粉墙，北方的青砖院墙、胡同；墙头与门罩的瓦（`huiCap`、`beiCap`）、院门、花窗；窗棂（灯笼锦 `lanternLattice`，步步锦 `stepLattice`、`gridLattice`） |

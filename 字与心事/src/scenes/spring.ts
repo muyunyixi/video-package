@@ -359,8 +359,10 @@ export function createSpring(renderer: THREE.WebGLRenderer): SceneHandle {
       // boughs: the south one first and faster, the bare north one after it
       growS.value = smooth(prog(f, E.start + 2, E.nan + 4));
       growN.value = smooth(prog(f, E.start + 6, E.bei + 4));
-      // the fold's lip where 不 and 同 strike it
-      uLip.value = [E.butong, E.butong + 6].reduce((a, at) => a + (f >= at - 1 ? 0.55 * Math.exp(-(f - at + 1) / 3.5) : 0), 0);
+      // the fold's lip where 不 and 同 strike it: v5.6, no flare any more (v4.0–v5.5: 0.55 at 不 and again at
+      // 同, 0.2 s apart, each gone in 0.1 s — it read as the line flickering twice; the user: "它弹开是春的时候再
+      // 弹开，中间的逻辑关联性不是很强，你干脆都别闪了"). The lip keeps its steady light (0.35 in the shader)
+      uLip.value = 0;
       // motes and sparks
       let iP = 0, iS = 0;
       const put = (kind: 0 | 1, x: number, y: number, size: number, turn: number, a: number) => {

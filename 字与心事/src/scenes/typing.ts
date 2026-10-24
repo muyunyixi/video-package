@@ -4,7 +4,7 @@
 // paper input strip.
 import * as THREE from "three";
 import cues from "../cues.json";
-import { makePost } from "../lib/post";
+import { makePost, seen, untoned, untonedHex } from "../lib/post";
 import { glyphCell, paperCanvas, glowCanvas, toTex } from "../lib/textures";
 import { drawText, makeCanvas } from "../lib/glyph";
 import { ALL_CHARS } from "../corpus";
@@ -77,23 +77,6 @@ export const LOOP = {
 export const loopCam = (f: number) => typingCam(REST_FOLLOW, 1 - easeInOutCubic(prog(f, LOOP.go, LOOP.home)), 0);
 /** where the line lies on the strip: each character's em square (as printed), and the cursor's bar */
 export const LOOP_STRIP = { x: (i: number) => slotX(i), y: STRIP_Y + 0.014, z: STRIP_Z, em: 0.92, cur: { x: SLOT0 - 0.5 + CUR_W / 2, y: STRIP_Y + 0.018, w: CUR_W, h: 0.92 } };
-// the output's neutral tone mapping (exposure 1, then sRGB), both ways: what it makes of a linear colour
-// (0–255), and the linear colour it turns into a given one (below its compression, as these all are)
-const seen = (c: THREE.Color) => {
-  const x = Math.min(c.r, c.g, c.b), off = x < 0.08 ? x - 6.25 * x * x : 0.04;
-  let v = [c.r - off, c.g - off, c.b - off];
-  const peak = Math.max(...v);
-  if (peak >= 0.76) {
-    const np = 1 - (0.24 * 0.24) / (peak - 0.52), w = 1 - 1 / (0.15 * (peak - np) + 1);
-    v = v.map((a) => lerp((a * np) / peak, np, w));
-  }
-  return v.map((a) => Math.round(255 * (a <= 0.0031308 ? 12.92 * a : 1.055 * Math.pow(a, 1 / 2.4) - 0.055)));
-};
-const untoned = (hex: string) => {
-  const c = new THREE.Color(hex);
-  const m = Math.min(c.r, c.g, c.b);
-  return c.addScalar((m < 0.04 ? Math.sqrt(m / 6.25) : m + 0.04) - m);
-};
 const CURSOR_COL = new THREE.Color(COLORS.vermilionHot).multiplyScalar(1.3);
 /** the cursor as the room shows it, before the vignette (scenes/Ending takes the page's cursor to it) */
 export const CURSOR_SEEN = seen(CURSOR_COL);
@@ -355,7 +338,7 @@ export function createTyping(renderer: THREE.WebGLRenderer): SceneHandle {
   // blurred by the same depth of field as the floor — so that landed it is the type printed in its cell:
   // the cell takes its character back (aInk) and the card fades into it.
   const homeIdx = LOOP_HOME.map(([c, r]) => cellIndex(c, r));
-  const LOOP_RED = untoned("#b32d27"); // the listing's red (scenes/Ending, COL.zh), as the room shows it
+  const LOOP_RED = untoned(COLORS.vermilion); // the listing's red (scenes/Ending, COL.zh), as the room shows it (v5.6: 朱砂, was #b32d27)
   const cardVS = /* glsl */ `
     varying vec2 vUv; varying vec3 vWorld; varying float vViewZ;
     void main(){
@@ -424,7 +407,9 @@ export function createTyping(renderer: THREE.WebGLRenderer): SceneHandle {
   const sendCanvas = (active: boolean) => {
     const c = makeCanvas(256, 256);
     const ctx = c.getContext("2d")!;
-    ctx.fillStyle = active ? COLORS.vermilion : "#b5aa98";
+    // v5.6: shows as 朱砂, near enough (measured 184, 48, 45): the room darkens it about 1.86×, and the red
+    // channel is at the canvas's full 255 (was COLORS.vermilion, which showed as 144, 16, 9)
+    ctx.fillStyle = active ? untonedHex("#c42b26", 1.86) : "#b5aa98";
     ctx.beginPath();
     ctx.arc(128, 128, 118, 0, Math.PI * 2);
     ctx.fill();

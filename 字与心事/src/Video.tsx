@@ -70,7 +70,7 @@ const LINE1: Line = {
 // from 13.9 s on, while the water was still light, and the poles crossed a mid-grey line.
 const dusk2 = (f: number) => smooth(prog(f, 448, 466));
 const LINE2: Line = {
-  glyphs: wordGlyphs([3, 4], [30], (n) => (n === 1 ? COLORS.vermilionHot : undefined)).map((g) => (g.ch === "。" ? { ...g, color: undefined } : g)),
+  glyphs: wordGlyphs([3, 4], [30], (n) => (n === 1 ? COLORS.vermilion : undefined)).map((g) => (g.ch === "。" ? { ...g, color: undefined } : g)),
   x: 960,
   y: 868,
   size: 104,

@@ -708,7 +708,7 @@ export const Reply: React.FC<{ from: number }> = ({ from }) => {
               width: sentW,
               height: BUBBLE_H,
               borderRadius: "24px 24px 6px 24px",
-              background: "linear-gradient(160deg, #cc3b33 0%, #b52a26 60%, #9e2321 100%)",
+              background: "linear-gradient(160deg, #d74139 0%, #c0302c 60%, #a92927 100%)",
               boxShadow: "0 6px 18px rgba(120,30,26,0.25)",
             }}
           />

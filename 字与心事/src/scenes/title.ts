@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import cues from "../cues.json";
-import { makePost } from "../lib/post";
+import { makePost, untoned } from "../lib/post";
 import { paperCanvas, glyphCell, glowCanvas, toTex } from "../lib/textures";
 import { drawText, makeCanvas, sampleTextPoints } from "../lib/glyph";
 import { W, H, COLORS, HW, lerp, prog, easeInOutCubic, easeOutCubic, easeInCubic, easeOutExpo, easeOutQuart, mulberry32, clamp, smooth } from "../lib/util";
@@ -363,7 +363,7 @@ export function createTitle(renderer: THREE.WebGLRenderer): SceneHandle {
       uDur: { value: 16 },
       uFade: { value: 0 },
       uInk: { value: new THREE.Color(COLORS.ink) },
-      uRed: { value: new THREE.Color(COLORS.vermilion) },
+      uRed: { value: untoned(COLORS.vermilion) }, // v5.6: shows as 朱砂 through the tone mapping
       uScale: { value: H / (2 * Math.tan((30 * Math.PI) / 360)) },
       uRes: { value: new THREE.Vector2(W, H) },
     },
@@ -440,7 +440,7 @@ export function createTitle(renderer: THREE.WebGLRenderer): SceneHandle {
   const titleGroup = new THREE.Group();
   const charMats: THREE.ShaderMaterial[] = [];
   [...TITLE].forEach((ch, ci) => {
-    const color = new THREE.Color(ci >= 2 ? COLORS.vermilion : COLORS.ink);
+    const color = ci >= 2 ? untoned(COLORS.vermilion) : new THREE.Color(COLORS.ink); // v5.6: 心事 shows as 朱砂
     const m = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -479,14 +479,17 @@ export function createTitle(renderer: THREE.WebGLRenderer): SceneHandle {
   sub.rotation.x = -Math.PI / 2;
   sub.position.set((subC.w / 2 - sBox.cx) * subU, 0.04, SUB_Z + (sBox.cy - subC.h / 2) * subU);
   scene.add(sub);
-  const rule = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.035), new THREE.MeshBasicMaterial({ color: COLORS.vermilion, transparent: true, opacity: 0 }));
+  const rule = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.035), new THREE.MeshBasicMaterial({ color: untoned(COLORS.vermilion), transparent: true, opacity: 0 }));
   rule.rotation.x = -Math.PI / 2;
   rule.position.set(0, 0.04, SUB_Z + 0.52);
   scene.add(rule);
 
   // ---------- the red thread pulled from 心 ----------
   const xin = titleGroup.children[2].position.clone();
-  const threadMat = new THREE.MeshStandardMaterial({ color: COLORS.vermilion, emissive: new THREE.Color(COLORS.vermilion), emissiveIntensity: 0.35, roughness: 0.4 });
+  // v5.6: lit as before, its body shows as 朱砂 (it showed about 216, 43, 28 with #c0302c for both: the light
+  // brightens it about 1.37× and adds a little white). Measured on the frame, as the one in scenes/thread
+  const THREAD_RED = new THREE.Color().setRGB(0.412, 0.039, 0.041); // linear
+  const threadMat = new THREE.MeshStandardMaterial({ color: THREAD_RED, emissive: THREAD_RED.clone(), emissiveIntensity: 0.35, roughness: 0.4 });
   const thread = new THREE.Mesh(new THREE.BufferGeometry(), threadMat);
   scene.add(thread);
   const xinGlow = new THREE.Mesh(

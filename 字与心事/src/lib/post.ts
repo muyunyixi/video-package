@@ -5,7 +5,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
-import { W, H } from "./util";
+import { W, H, lerp } from "./util";
 
 export const FinishShader = {
   uniforms: {
@@ -94,3 +94,25 @@ export function makePost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, came
   composer.addPass(finish);
   return { composer, bloom, finish, renderPass };
 }
+
+// the output's neutral tone mapping (exposure 1, then sRGB), both ways: what it makes of a linear colour
+// (0–255), and the linear colour it turns into a given one (below its compression, as these all are).
+// v5.6: here (from scenes/typing) so every tone-mapped scene can show 朱砂 as 朱砂
+export const seen = (c: THREE.Color) => {
+  const x = Math.min(c.r, c.g, c.b), off = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  let v = [c.r - off, c.g - off, c.b - off];
+  const peak = Math.max(...v);
+  if (peak >= 0.76) {
+    const np = 1 - (0.24 * 0.24) / (peak - 0.52), w = 1 - 1 / (0.15 * (peak - np) + 1);
+    v = v.map((a) => lerp((a * np) / peak, np, w));
+  }
+  return v.map((a) => Math.round(255 * (a <= 0.0031308 ? 12.92 * a : 1.055 * Math.pow(a, 1 / 2.4) - 0.055)));
+};
+export const untoned = (hex: string, gain = 1) => {
+  // gain: for a surface the scene darkens (its light, its vignette) by 1 / gain
+  const c = new THREE.Color(hex).multiplyScalar(gain);
+  const m = Math.min(c.r, c.g, c.b);
+  return c.addScalar((m < 0.04 ? Math.sqrt(m / 6.25) : m + 0.04) - m);
+};
+/** the same, as a canvas colour (sRGB hex): a canvas texture painted with it shows as `hex` */
+export const untonedHex = (hex: string, gain = 1) => "#" + untoned(hex, gain).getHexString();

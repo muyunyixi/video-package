@@ -280,7 +280,7 @@ export const HUD: React.FC = () => {
                 text="懂"
                 size={S2}
                 spacing={0}
-                style={{ display: "inline-block", color: COLORS.vermilionHot, transform: `scale(${lerp(1.8, 1, dongIn)})`, opacity: clamp(st.dong / 3) }}
+                style={{ display: "inline-block", color: COLORS.vermilion, transform: `scale(${lerp(1.8, 1, dongIn)})`, opacity: clamp(st.dong / 3) }}
               />
             </>
           ) : (

@@ -19,6 +19,8 @@
 # frame to frame across the seam the last and first half-second need about 150 KB a frame (36 Mbps, what
 # v5.0's CRF 15 spent there), which only a large buffer lets the encoder borrow. The seam is what the viewer
 # sees (the film loops); the platforms' advice is about the average.
+# v5.6: when the two passes leave the last half-second coarse (seam over ×2), give the frames before the seam
+# more: HQ_ZONES="2212,2229,b=2.0" (v5.6: ×2.2 → ×1.6).
 # H.265 single file: as render/encode_v46.sh (the seam window), with the colour conversion.
 set -euo pipefail
 FRAMES=${FRAMES:-/home/claude/zxs/out/full51_all}

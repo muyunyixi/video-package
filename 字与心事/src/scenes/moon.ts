@@ -20,7 +20,7 @@ import { southBranchCanvas, northBranchCanvas, southFlowers, northSnow } from ".
 import { nearRoofs, farRoofs, ROOF_TOP, ROOF_H, HIS_WINDOW, HER_WINDOW, hisLattice, herLattice } from "../lib/roofs";
 import { drawBranch, flowerBud } from "../lib/paint";
 import { moonGlyphs } from "./Chat";
-import { W, H, HW, lerp, prog, smooth, easeInOutCubic, easeOutCubic, easeInCubic, mulberry32, clamp } from "../lib/util";
+import { W, H, HW, COLORS, lerp, prog, smooth, easeInOutCubic, easeOutCubic, easeInCubic, mulberry32, clamp } from "../lib/util";
 import type { SceneHandle } from "../lib/ThreeLayer";
 
 const M = cues.moon;
@@ -357,15 +357,17 @@ export function createMoon(renderer: THREE.WebGLRenderer): SceneHandle {
     const mat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      uniforms: { uTex: { value: glyphTex }, uBurn: { value: 0 }, uA: { value: 0 }, uSeed: { value: i * 3.7 }, uRed: { value: p.red ? 1 : 0 } },
+      uniforms: { uTex: { value: glyphTex }, uBurn: { value: 0 }, uA: { value: 0 }, uSeed: { value: i * 3.7 }, uRed: { value: p.red ? 1 : 0 }, uVerm: { value: new THREE.Color(COLORS.vermilion) } },
       vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `uniform sampler2D uTex; uniform float uBurn, uA, uSeed, uRed; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D uTex; uniform float uBurn, uA, uSeed, uRed; uniform vec3 uVerm; varying vec2 vUv;
         ${NOISE}
         float box(vec2 p, vec2 b, float r){ vec2 q = abs(p) - b + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }
         void main(){
           float g = texture2D(uTex, vUv).a;
           float chip = smoothstep(0.008, -0.008, box(vUv - 0.5, vec2(0.43), 0.07));
-          vec3 vermilion = vec3(0.74, 0.165, 0.14), paper = vec3(0.93, 0.905, 0.865);
+          // v5.6: the chips' red is 朱砂 (#c0302c, linear; this scene is not tone-mapped), as the seal; it was
+          // (0.74, 0.165, 0.14), which showed salmon (about 225, 112, 100)
+          vec3 vermilion = uVerm, paper = vec3(0.93, 0.905, 0.865);
           // 朱文 from his red bubbles: a red 月 on white; 白文 from hers: a white 月 cut in red
           vec3 c = uRed > 0.5 ? mix(paper, vermilion, g) : mix(vermilion, paper, g);
           float n = fbm(vUv * 6.0 + uSeed);

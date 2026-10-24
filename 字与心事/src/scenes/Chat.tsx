@@ -317,7 +317,7 @@ export const Chat: React.FC<{ from: number }> = ({ from }) => {
                     width: l.w,
                     height: BUBBLE_H,
                     borderRadius: mine ? "24px 24px 6px 24px" : "24px 24px 24px 6px",
-                    background: mine ? "linear-gradient(160deg, #cc3b33 0%, #b52a26 60%, #9e2321 100%)" : "#fbfaf7",
+                    background: mine ? "linear-gradient(160deg, #d74139 0%, #c0302c 60%, #a92927 100%)" : "#fbfaf7",
                     boxShadow: mine ? "0 6px 18px rgba(120,30,26,0.25)" : "0 4px 14px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.06)",
                   }}
                 />

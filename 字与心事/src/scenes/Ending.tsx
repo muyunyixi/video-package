@@ -153,7 +153,7 @@ type Cls = "kw" | "str" | "zh" | "tpl" | "com" | "num" | "id" | "pun";
 const COL: Record<Cls, string> = {
   kw: "#22325a",
   str: "#8e4e3e",
-  zh: "#b32d27",
+  zh: COLORS.vermilion, // v5.6: 朱砂 (was #b32d27)
   tpl: "#5c6480",
   com: "#8f8a81",
   num: "#7c4c1e",

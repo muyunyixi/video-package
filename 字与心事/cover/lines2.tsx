@@ -302,7 +302,9 @@ function ridgeLayer() {
   // centre, under the dot (until 2026-10-23 it left from the peak itself, 3 px below the centre, and came
   // out of the dot's lower half)
   const fire = { x: beacon.x, y: beacon.y - 3 };
-  ctx.strokeStyle = COLORS.vermilionHot;
+  // v5.6: the thread, the beacon and 心事 in the film's 朱砂 (#c0302c; was #e2493f) — one red for the film
+  // and its cover (the user: "我们就可以让全篇的红色都统一")
+  ctx.strokeStyle = COLORS.vermilion;
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i <= 200; i++) {
@@ -311,7 +313,7 @@ function ridgeLayer() {
     i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   }
   ctx.stroke();
-  ctx.fillStyle = COLORS.vermilionHot;
+  ctx.fillStyle = COLORS.vermilion;
   ctx.beginPath();
   ctx.arc(fire.x, fire.y, 6, 0, Math.PI * 2);
   ctx.fill();
@@ -325,7 +327,7 @@ function ridgeLayer() {
   x.font = `${T.size}px ${HW}`;
   x.textBaseline = "alphabetic";
   t.glyphs.forEach((gl, i) => {
-    x.fillStyle = i >= 2 ? COLORS.vermilionHot : "#E6ECEF";
+    x.fillStyle = i >= 2 ? COLORS.vermilion : "#E6ECEF";
     x.fillText(gl.ch, gl.left, t.baseline);
   });
   x.globalCompositeOperation = "source-atop";
