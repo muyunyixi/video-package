@@ -6,7 +6,7 @@ set -euo pipefail
 mkdir -p "$1"
 OUT=$(cd "$1" && pwd)  # absolute: the zip is made from inside it
 Z=/home/claude/zxs
-V=${V:-v5.1}
+V=${V:-v5.4}
 P="$OUT/字与心事_代码包_$V"
 rm -rf "$P"
 mkdir -p "$P"/{src/scenes,src/lib,src/gen,audio,render,analysis,docs,cover,tools}
@@ -14,8 +14,8 @@ cp "$Z"/src/{HUD.tsx,Poem.tsx,Root.tsx,Vertical.tsx,Video.tsx,corpus.ts,cues.jso
 cp "$Z"/src/gen/{source.json,hw_metrics.json} "$P/src/gen/"
 for f in Chat.tsx Ending.tsx Reply.tsx Rewrite.tsx city.ts clock.ts inkheart.ts moon.ts spring.ts thread.ts title.ts typing.ts; do cp "$Z/src/scenes/$f" "$P/src/scenes/"; done
 for f in ThreeLayer.tsx birds.ts branches.ts cityCam.ts drift.tsx glyph.ts ink.ts lattice.ts paint.ts post.ts roofs.ts sdf.ts seep.tsx sparrow.ts textures.ts util.ts woodblock.ts; do cp "$Z/src/lib/$f" "$P/src/lib/"; done
-cp "$Z"/audio/{synth.py,sfx2.py,listing_v45.json,score_v50.py,score_v45.py,score_v44.py,score_v41.py,score_v40.py,score_v37.py,score_v36.py,score_v35.py,score_v34.py,score_v33.py,score_v32.py,score_v31.py,score_v3.py,master.sh} "$P/audio/"
-cp "$Z"/render/{build.mjs,gen_source.mjs,hw_metrics.py,entry.tsx,index.html,render.mjs,queue_v44.sh,chain_v45.sh,encode_v45.sh,encode_v46.sh,chain_v47.sh,link_v47.sh,encode_v47.sh,chain_v50.sh,link_v50.sh,encode_v50.sh,build_v51.mjs,chain_v51.sh,link_v51.sh,encode_v51.sh,preview_v45.sh,verify_final.py,verify_seam.py,sheet.py,package_v45.sh} "$P/render/"
+cp "$Z"/audio/{synth.py,sfx2.py,listing_v45.json,score_v54.py,score_v53.py,score_v50.py,score_v45.py,score_v44.py,score_v41.py,score_v40.py,score_v37.py,score_v36.py,score_v35.py,score_v34.py,score_v33.py,score_v32.py,score_v31.py,score_v3.py,master.sh} "$P/audio/"
+cp "$Z"/render/{build.mjs,gen_source.mjs,hw_metrics.py,entry.tsx,index.html,render.mjs,queue_v44.sh,chain_v45.sh,encode_v45.sh,encode_v46.sh,chain_v47.sh,link_v47.sh,encode_v47.sh,chain_v50.sh,link_v50.sh,encode_v50.sh,build_v51.mjs,chain_v51.sh,link_v51.sh,encode_v51.sh,chain_v52.sh,link_v52.sh,preview_v45.sh,verify_final.py,verify_seam.py,sheet.py,package_v45.sh} "$P/render/"
 cp "$Z"/analysis/{align_v41.py,hud_v41.py,search_v41.py,continuity_v41.py,visible_blank.py,grid_v45.py} "$P/analysis/"
 # the grid typesetter (《字体处理规范》第六节): any text, laid out by the film's rules, as SVG outlines / PNG
 cp "$Z"/tools/{gridtype.py,svg2png.mjs} "$P/tools/"

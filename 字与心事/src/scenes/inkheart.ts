@@ -242,15 +242,15 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
   };
   addSplash(D.drop1, tanI.x, tanI.y, 26, false);
   addSplash(D.drop2, que.x, que.y, 46, true);
-  // v5.1: the dense ink that lands above the line dries pale. The line is level (更、忐、忑 end at
-  // 534–535 px), but at full strength the splash and the burst left a cloud of black dots over 雀跃
-  // (1056 px darker than half, against 5 over 忐忑) and the line read as higher on the left (用户:
-  // “总觉得还是左高右低”). A mark above the line's ink top hits at full strength and, over the next
-  // 24 frames, dries to ABOVE_DRY of it (about the pale ink of 忐忑); marks beside and below are kept.
-  const LINE_TOP = base1 + L.inkT;
-  const ABOVE_DRY = 0.4;
-  const dryAbove = (y: number, wet: number) =>
-    lerp(1, lerp(1, ABOVE_DRY, smooth(clamp((LINE_TOP + 6 - y) / 16))), smooth(clamp(wet / 24)));
+  // v5.2: the dense ink that lands on the paper dries pale. The line is level (更、忐、忑 end at 534–535 px),
+  // but at full strength the splash and the burst left black dots that read as a tilt: v5.1 dried the ones
+  // above the line (over 雀跃 1113 px darker than half, over 忐忑 5: "左高右低"), and the rest still lay in a
+  // band from the lower left up into 雀跃 (78% of the dots' ink left of x 650, 59% below the line, the band
+  // rising 12–19°), against which the level line reads as falling to the right (用户: "向右下倾斜"); a test
+  // frame with no dots on the paper reads level. So every mark that lands hits at full strength and, over
+  // the next 24 frames, dries to DRY of it (about the pale ink of 忐忑); the drops in the air are unchanged.
+  const DRY = 0.4;
+  const dried = (wet: number) => lerp(1, DRY, smooth(clamp(wet / 24)));
 
   // ---------- the burst: 雀跃 throws up its ink ----------
   const softDot = (() => {
@@ -567,7 +567,7 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
       for (const s of splashes) {
         const t = prog(f, s.at, s.at + 6);
         const m = s.mesh.material as THREE.MeshBasicMaterial;
-        m.opacity = f >= s.at ? (s.dark ? 0.92 * dryAbove(s.oy + s.dy, f - s.at - 6) : 0.6) : 0;
+        m.opacity = f >= s.at ? (s.dark ? 0.92 * dried(f - s.at - 6) : 0.6) : 0;
         const e = easeOutCubic(t);
         s.mesh.position.set(s.ox + s.dx * e, -(s.oy + s.dy * e), 0.5);
         s.mesh.scale.setScalar(s.r * (0.6 + 0.4 * e));
@@ -668,7 +668,7 @@ export function createInkheart(renderer: THREE.WebGLRenderer): SceneHandle {
         if (s.splat) {
           const sm = s.splat.material as THREE.MeshBasicMaterial;
           const st = tf - s.land;
-          sm.opacity = st >= 0 ? 0.9 * dryAbove(s.ly, st - 3) : 0;
+          sm.opacity = st >= 0 ? 0.9 * dried(st - 3) : 0;
           s.splat.scale.setScalar(s.size * 3.2 * lerp(0.55, 1, easeOutCubic(clamp(st / 3))));
         }
       }

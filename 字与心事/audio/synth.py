@@ -142,8 +142,12 @@ def guzheng(note, dur=2.4, vel=1.0, bright=0.62, t60=None, vib=0.0, bend=0.0, be
 
 
 # ---------------------------------------------------------------- winds
-def flute_line(notes, vel=1.0, breath=0.12, vib=0.011, seed=0, glide=0.035, kind="dizi"):
-    """notes: list of (start_s, dur_s, note). Continuous breath with portamento."""
+def flute_line(notes, vel=1.0, breath=0.12, vib=0.011, seed=0, glide=0.035, kind="dizi", tail=0.0):
+    """notes: list of (start_s, dur_s, note). Continuous breath with portamento.
+    tail (v5.3): the line's last note dies away over its last `tail` seconds as a breath runs out —
+    (1 − u)^1.6, the pitch sagging 14 cents by the end — instead of the 90 ms release that joins notes
+    inside a phrase (which, at the end of a phrase, stops the tone and the breath noise at once). 0 keeps
+    the old behaviour, sample for sample."""
     end = max(s + d for s, d, _ in notes) + 0.4
     n = n_samples(end)
     t = t_axis(n)
@@ -159,6 +163,9 @@ def flute_line(notes, vel=1.0, breath=0.12, vib=0.011, seed=0, glide=0.035, kind
         att = np.clip(seg / 0.06, 0, 1)
         rel = np.clip((d - seg) / 0.09, 0, 1)
         a = att * (0.82 + 0.18 * rel) * np.minimum(1, rel * 3 + 0.25)
+        if tail > 0 and i == len(notes) - 1:
+            u = np.clip((seg - (d - tail)) / tail, 0, 1)
+            a = att * (1 - u) ** 1.6
         swell = 1 + 0.12 * np.clip((seg - 0.12) / 0.6, 0, 1)
         amp[i0:i1] = np.maximum(amp[i0:i1], a * swell)
     # fill frequency gaps (hold previous), then smooth for portamento
@@ -177,6 +184,10 @@ def flute_line(notes, vel=1.0, breath=0.12, vib=0.011, seed=0, glide=0.035, kind
         seg = t[i0:i1] - s
         vibdepth[i0:i1] = vib * np.clip((seg - 0.18) / 0.4, 0, 1)
     f = f * (1 + vibdepth * np.sin(2 * np.pi * 5.3 * t))
+    if tail > 0:
+        s_, d_, _ = notes[-1]
+        u = np.clip((t - (s_ + d_ - tail)) / tail, 0, 1)
+        f = f * (1 - 0.008 * u ** 2)
     ph = 2 * np.pi * np.cumsum(f) / SR
     if kind == "xun":
         tone = np.sin(ph) + 0.12 * np.sin(3 * ph) + 0.04 * np.sin(5 * ph)

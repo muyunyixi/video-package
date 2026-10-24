@@ -1,0 +1,1310 @@
+"""Full score for 《字与心事》 (74.3 s), locked to the picture cue sheet (cues.json).
+v4.5 (from score_v44.py; no note of the music moves):
+  - 字回字盘 (M) follows its new picture. The line lies down out of the page onto the opening's input
+    strip (72.83–73.23 s): a soft slide of paper, and a pat as it lies flat; then its characters go home
+    into the type one by one, the last first, each with a small wooden click as it drops into its cell
+    (73.50 → 74.01 s, slowing), high to low as the line empties toward the cursor, each panned where it
+    lands. The cursor makes no sound: it lies down with the line and waits. (v4.4: twelve key clicks
+    over 73.47–73.92 s, still going on after the cursor had stopped, at 73.8 s.)
+  - the code's knock, bell and harmonic one frame later, on the frame the cursor first shows before 掂
+    (72.00 s; v4.4: 71.97, the frame before).
+  - the listing's speed (CODE_V) is worked out from the listing itself (gen/source.json), the way
+    Ending.tsx moves it, instead of being written in by hand.
+  - the ratchet of the lapse follows the clock, which now slows into the count (HUD storySeconds: out
+    of real time from the first drop, eight seconds a second from 31.5 s, eased from 39.83 s into a
+    second a beat at 23:59:57): from the fold, one tick each time its second turns over — twelve, :45
+    to :56, 7.3 a second slowing to 2.1 — in the count's own tick, rising into it. (v4.4: a whirr of
+    clicks racing from 6 to 34 a second, while the clock stood at 23:59:56.)
+v4.4 (from score_v41.py; no note of the music moves): the code coda's carriage return and its whoosh
+  follow the listing's rewind as it is seen. The rewind is fastest at once and slows hard (half its
+  way by 71.2 s, 99% by 71.57 s, still by 71.83 s), but v4.0–v4.3 laid both sounds evenly over the
+  second from rewind to stop, loudest in its middle (71.47 s) and on to 72.0 s: half a beat late and
+  a quarter second longer than the picture (the user: "the sound is longer than the picture"). Now
+  they go with the scroll's speed frame by frame, as 往事's ticks do; the bell and the knock stay
+  on the stop, where the cursor comes to rest before 掂.
+v4.1:
+  - one beat (0.5 s) inserted at 26.0 s, where the pool comes in: 南北 keeps all its length, the chord
+    that ends it (home on D at 25.0) rings one beat longer — its own tail fills the beat, with the
+    pool's room tone under it — and the first drop, seen falling through that beat, lands on the first
+    drip at 26.5 s. Everything from the first drip on is one beat later; no note of it moves against
+    another. The score is still written in v4.0's times: the cue sheet is read back into them
+    (OLD_CUES), and every sound from the clock on is placed one beat later as it goes into its bus
+    (WARP). The rain and wind of 南北 now leave with its picture (25.85–26.2 s; v4.0: to 26.6).
+v4.0 (from v3.1's eighth version; no note of the music moves):
+  - 更漏: the picture is a night pool now (no candle, no woodblock plate): the candle's crackle and the
+    plate's seven quiet drips between the beats are gone; the drips on the beat are the drops one sees
+    land (the first one is seen now, so it is no longer held back); the drop at 25.6 s, which no drop
+    on screen matched, is gone; and (second draft) so is the wood "tock" a quarter second after every
+    second drop (26.75, 27.75, 28.75 s), which between the drops read as an extra one. Between the
+    drops there is only the music now.
+  - the dive into the window: the whoosh peaks as the window's frame passes the edges of the screen
+    (64.8 s, was 64.9), and the last A of the bass holds to the window instead of stopping at 64.5.
+  - the loop: half a second more at the end (72.33–72.83) — the type falling back into its case, the
+    room and the crickets carried on at the opening's level, so the end runs into the beginning.
+D major pentatonic, 120 bpm (one beat = 15 frames). Everything is synthesized.
+
+v3.1, eighth version: the film as one song, at one tempo — a short intro, verse A, chorus A.
+  intro (落笔, 片名, 0–9)
+  verse A (9–39): the 一线 tune, two lines (甲, 乙) with a short gap between them, sung three times:
+    9–17; 19.5–25 (甲 from its middle: the strings play its first half, the dizi takes the second);
+    31.5–39 (往事 → 月) — with the 更漏 interlude (25–31) between
+  pre-chorus (40.5–43: 1 2 3 | 2 3 5, landing on the dominant) · the count (43–44.5, the film's one
+    three-beat bar: 23:59:57 · 58 · 59)
+  chorus A, two lines:
+    line 1 (44.5–52): its first note on the 子正 bell; it climbs — to F# as her light lands at his
+      window (48.4), to its top, A, as the unsent half surfaces (49.5) — and settles a step above home,
+      on E, as her reply opens (50.5–52): it ends open; line 2, the same shape an octave higher, ends home
+    the link (50.5–54.5): the strings answer her reply line by line, climbing; the drums tighten
+    line 2 (54.5–63.75): starts with the lights. A dizi sings the head of the line low (54.5), a second
+      dizi joins an octave above with the lights' line (56.0); the head climbs — low, high, a step
+      higher — to the peak (60.5) and home on the last thread (62.5)
+  outro (片尾, 彩蛋)
+Every bar is four beats except the count; phrases run across the cuts and leave a gap at their ends;
+the sound effects sit on the beat, in the chord, under the tune, and from 子正 on they never push the
+tune down (the side chain leaves the dizi alone there). Bars: two seconds from 1.0 s to 43.0 s, then
+from 44.5 s."""
+import json, os, sys
+import numpy as np
+from scipy.io import wavfile
+import synth as S
+import sfx2 as X
+
+SR = S.SR
+CUES_NEW = json.load(open(sys.argv[1] if len(sys.argv) > 1 else "/home/claude/zxs/src/cues.json"))
+OUT = sys.argv[2] if len(sys.argv) > 2 else "/home/claude/zxs/out/audio/full_premaster.wav"
+DUR = CUES_NEW["total"] / 30.0
+# v4.1 · the beat inserted at 26.0 s (frame 780): the cue sheet is in the film's new times; the score
+# reads it back into v4.0's (frames from the first drip on, 795, were 15 earlier) and is placed one
+# beat later from the clock on (WARP, set where that section starts, added by Bus.add)
+GAP_AT, GAP = 780, 15
+WARP = 0.0
+
+
+def OLD_CUES(c):
+    import copy
+    c = copy.deepcopy(c)
+    un = lambda f: f - GAP if f >= GAP_AT + GAP else f
+    c["scenes"] = {k: [un(a), un(b)] for k, (a, b) in c["scenes"].items()}
+    c["total"] = un(c["total"])
+    for k in ("loop", "history", "moon", "reply", "city", "ending", "code"):
+        c[k] = {kk: ([un(x) for x in v] if isinstance(v, list) else un(v)) for kk, v in c[k].items()}
+    c["clock"] = {kk: (v if kk == "start" else ([un(x) for x in v] if isinstance(v, list) else un(v))) for kk, v in c["clock"].items()}
+    c["light"] = [[un(a), un(b), fi, fo] for a, b, fi, fo in c["light"]]
+    for kk in ("realUntil", "lapseEnd", "midnight"):
+        c["story"][kk] = un(c["story"][kk])
+    return c
+
+
+CUES = OLD_CUES(CUES_NEW)
+FPS = 30.0
+fr = lambda f: f / FPS
+STEP = 0.125  # 16th note
+REG = 0  # the lights' line (chorus line 2, the upper dizi) stays at the height v3 had it
+SOFT = True  # the lights' line is rounded off at the top (the master's treble lift made it sharp)
+
+
+class Bus:
+    def __init__(self, send=0.0):
+        self.x = np.zeros((S.n_samples(DUR) + SR * 5, 2))
+        self.send = send
+
+    def add(self, y, t, db=0.0, pan=0.0):
+        if y is None or len(y) == 0:
+            return
+        t = t + WARP  # v4.1: from the clock on, one beat later
+        g = 10 ** (db / 20)
+        i = S.n_samples(t)
+        if i < 0:
+            y = y[-i:]
+            i = 0
+        if y.ndim == 1:
+            a = (pan + 1) * np.pi / 4
+            st = np.stack([y * np.cos(a), y * np.sin(a)], axis=1) * np.sqrt(2)
+        else:
+            st = y
+        m = min(len(st), self.x.shape[0] - i)
+        if m > 0:
+            self.x[i:i + m] += st[:m] * g
+
+
+rnd = np.random.default_rng(2026)
+amb = Bus(0.05)
+sfx = Bus(0.18)
+ui = Bus(0.08)
+drums = Bus(0.08)
+
+
+class KeepBus(Bus):
+    """v5.0: the drum parts written section by section are kept only before the groove (the title, up to
+    9.0 s) and in the count (43.5–45.0: the heartbeats); everywhere else the kit is the one written out
+    at the end (section K), one pattern and one level a section."""
+
+    def add(self, y, t, db=0.0, pan=0.0):
+        tt = t + WARP
+        if tt < 9.0 - 1e-6 or 43.5 - 1e-3 <= tt < 45.0 - 1e-3:
+            super().add(y, t, db, pan)
+
+
+drums = KeepBus(0.08)
+kit = Bus(0.08)  # v5.0: the kit, section K
+bass = Bus(0.0)
+music = Bus(0.3)
+lead = Bus(0.42)
+bells = Bus(0.45)
+fxb = Bus(0.2)
+loopb = Bus(0.3)  # the loop: the groove's guzheng figure, kept going under the whole film
+
+C = CUES
+
+
+OLD_OSTI = False
+
+
+def groove(b0, bass_note, pad_notes, cutoff, osti, seed, kick_db=-6, full=True, shaker=True, crash=True, hats=True, snare=True, pad_db=-21, osti_db=-19, bass_db=-6.5, glide=None):
+    """One 2 s bar of the main groove (the 'travelling' rhythm of the film)."""
+    if crash:
+        drums.add(S.crash(1.0, seed, 2.0), b0, -13, pan=0.3 if seed % 2 else -0.3)
+        drums.add(S.taiko(1.0, seed + 1), b0, -11)
+    kicks = [0, 8]  # v5.0: on the kit's kicks, one and three (v4.5: 0, 6, 11 — the push before two and four)
+    for j, s in enumerate(kicks):
+        drums.add(S.kick(1.0, seed + 2 + j), b0 + s * STEP, kick_db if s == 0 else kick_db - 2)
+        nxt = (kicks[j + 1] if j + 1 < len(kicks) else 16) - s
+        g = glide if j == len(kicks) - 1 else None
+        if bass_note:
+            bass.add(S.bass808(bass_note, nxt * STEP + 0.05, 1.0, glide_to=g), b0 + s * STEP, bass_db)
+    if snare:
+        drums.add(S.snare(1.0, seed + 6), b0 + 8 * STEP, -10)
+        drums.add(S.clap(1.0, seed + 7), b0 + 8 * STEP, -13, pan=0.1)
+    if hats:
+        for s in range(0, 16, 2):
+            drums.add(S.hat(1.0, s == 14, seed + 10 + s), b0 + s * STEP, -18 if s % 4 == 0 else -21, pan=0.28)
+    if shaker:
+        for s in range(16):
+            drums.add(S.hat(1.0, False, seed + 40 + s) * 0.6, b0 + s * STEP + 0.006, -27 + (2 if s % 4 == 2 else 0), pan=-0.32)
+    if pad_notes:
+        music.add(S.pad(pad_notes, 2.0, 1.0, attack=0.25, release=0.6, cutoff=cutoff, seed=seed + 60), b0, pad_db)
+    if osti and OLD_OSTI:  # v5.0: the guzheng layer of section K instead
+        for s, nt in enumerate(osti.split()):
+            if nt == "-":
+                continue
+            music.add(S.guzheng(nt, 0.7, 1.0, 0.8, t60=1.1, seed=seed + 100 + s), b0 + s * STEP, osti_db + (1.5 if s % 4 == 0 else 0), pan=-0.35 if s % 2 else 0.35)
+
+
+def dizi(notes, t0, db, seed, breath=0.13, vib=0.012, kind="dizi", tail=0.0):
+    lead.add(S.flute_line([(s - t0, d, n) for s, d, n in notes], 1.0, breath=breath, vib=vib, seed=seed, kind=kind, tail=tail), t0, db)
+
+
+def pan_sweep(y, p0, p1):
+    """Mono → stereo with the pan travelling from p0 to p1 (equal power)."""
+    a = (np.linspace(p0, p1, len(y)) + 1) * np.pi / 4
+    return np.stack([y * np.cos(a), y * np.sin(a)], axis=1) * np.sqrt(2)
+
+
+def body(y, lo=380.0, hi=1300.0, drive=8.0):
+    """v4.0, for phone speakers: the harmonics a low hit would have if it were pushed a little —
+    a low-mid copy, saturated and band-limited, mixed well under the hit itself."""
+    return S.norm(S.bp(np.tanh(drive * S.norm(y, 1.0)), lo, hi), 1.0)
+
+
+def env_curve(n, pts):
+    """Piecewise-linear envelope through (seconds, level) points."""
+    xs, vs = zip(*pts)
+    return np.interp(S.t_axis(n), xs, vs)
+
+
+# ---------------------------------------------------------------- one grid, one loop, one refrain
+# Two-second bars from 1.0 s to 43.0 s; the countdown bar 43.0–44.5 is 3/4 (23:59:57 · 58 · 59 on
+# its three beats, 子正 on the next downbeat); then two-second bars from 44.5 s on. Every section's
+# groove sits on this grid, so the strong beat never jumps at a cut.
+def half_bar(t):
+    """Start of the half-bar (one second) that t falls in."""
+    if t < 43.0:
+        return float(np.floor(t + 1e-6))
+    if t < 44.5:
+        return 43.0 if t < 44.0 - 1e-6 else 44.0
+    return 44.5 + float(np.floor(t - 44.5 + 1e-6))
+
+
+# the loop: the first half-bar of the groove's guzheng figure (root, 5th, 6th, 5th · root, 2nd,
+# root, 5th), moved onto whatever chord is under it; in eighths it rocks on the first four notes
+FIG = {
+    "D": "D5 A4 B4 A4 D5 E5 D5 A4".split(),
+    "Bm": "B4 F#4 A4 F#4 B4 D5 B4 F#4".split(),
+    "A": "A4 E4 F#4 E4 A4 B4 A4 E4".split(),
+    "G": "G4 D4 E4 D4 G4 A4 G4 D4".split(),
+}
+
+
+def loop(t0, t1, chords, db, seed, every=1, bright=0.8, shape=None, pan=0.35):
+    """The loop figure in sixteenths (every=2: eighths) from t0 to t1 over the chord changes
+    [(time, chord), ...]; shape = [(t, dB), ...] bends its level, and bright its tone."""
+    t, k = t0, 0
+    while t < t1 - 1e-6:
+        a = half_bar(t)
+        i = int(round((t - a) / STEP)) % 8 if every == 1 else int(round((t - a) / (2 * STEP))) % 4
+        ch = [c for (tc, c) in chords if tc <= t + 1e-6][-1]
+        g = db + (1.5 if i % 4 == 0 else 0) + (float(np.interp(t, *zip(*shape))) if shape else 0.0)
+        br = bright(t) if callable(bright) else bright
+        loopb.add(S.guzheng(FIG[ch][i], 0.7, 1.0, br, t60=1.1, seed=seed + k), t, g, pan=-pan if (k % 2) else pan)
+        t += STEP * every
+        k += 1
+
+
+def shaker(t0, t1, db, seed, shape=None):
+    """The glue: a soft shaker in sixteenths, the third of every four leaning in."""
+    t, k = t0, 0
+    while t < t1 - 1e-6:
+        i = int(round((t - half_bar(t)) / STEP)) % 4
+        g = db + (2 if i == 2 else 0) + (float(np.interp(t, *zip(*shape))) if shape else 0.0)
+        drums.add(S.hat(1.0, False, seed + k) * 0.6, t + 0.006, g, pan=-0.32)
+        t += STEP
+        k += 1
+
+
+def octave(n, k):
+    return n[:-1] + str(int(n[-1]) + k)
+
+
+def dizi_r(notes, t0, db, seed, breath=0.13, vib=0.012):
+    """The refrain's dizi. In version B (v3's high register) its tone is rounded off: breath noise and
+    upper harmonics above ~4 kHz are rolled back, where the master's treble lift makes it sharp."""
+    y = S.flute_line([(s - t0, d, n) for s, d, n in notes], 1.0, breath=breath * (0.75 if SOFT else 1.0), vib=vib, seed=seed)
+    if SOFT:
+        y = S.norm(S.lp(y, 3800, 1), 1.0)
+    lead.add(y, t0, db)
+
+
+# ======================================================== A · 落笔 (0–6 s)
+amb.add(S.room_tone(6.4, 1.0, 1), 0.0, -50)
+bells.add(S.bell("A5", 2.2, 1.0, [(1, 1, 0.7), (2.0, 0.22, 0.35), (2.76, 0.08, 0.2)], seed=1), 0.05, -21, pan=0.15)
+music.add(S.sine_pad(["D2", "A2"], 1.6, 1.0, attack=0.4, release=1.2), 0.0, -27)
+amb.add(S.crickets(5.8, 1.0, 7), 0.0, -46, pan=-0.35)
+amb.add(S.crickets(5.8, 1.0, 8), 0.4, -49, pan=0.45)
+stamp_notes = {"掂量": ("D4", 0.15), "情思": ("E4", 0.1), "敲字句": ("F#4", 0.1), "轻顿": ("A4", 0.15), "指尖": ("B4", 0.3)}
+for ei, e in enumerate(C["ime"]):
+    for k in e["keys"]:
+        ui.add(S.key_tap(1.0, int(k * 7 + ei)), fr(k), -21 + rnd.uniform(-2, 1), pan=rnd.uniform(-0.15, 0.15))
+    if e["tray"] >= 0:
+        sfx.add(S.wood_knock(1.0, 30 + ei), fr(e["tray"]), -20, pan=-0.05)
+        sfx.add(S.whoosh(0.16, 700, 2600, 1.0, 40 + ei, 0.4), fr(e["tray"]) - 0.02, -30)
+    for j, (f, _) in enumerate(e["hl"]):
+        if j > 0:
+            ui.add(S.wood_tick(1.0, 60 + ei * 3 + j), fr(f), -24, pan=0.1)
+    if e["word"] != "，":
+        sfx.add(S.whoosh(0.12, 1500, 4500, 1.0, 80 + ei, 0.7), fr(e["pick"]), -30)
+    sfx.add(S.clack(1.0, 100 + ei), fr(e["stamp"]), -11 if e["word"] != "，" else -19, pan=-0.1 + 0.03 * ei)
+    if e["word"] in stamp_notes:
+        nt, vib = stamp_notes[e["word"]]
+        music.add(S.guzheng(nt, 3.0, 1.0, 0.65, vib=vib, seed=200 + ei), fr(e["stamp"]), -11, pan=-0.12 + 0.05 * ei)
+    else:
+        bells.add(S.bell("A5", 1.2, 1.0, [(1, 1, 0.5), (2, 0.2, 0.2)], seed=11), fr(e["stamp"]), -27, pan=0.2)
+# the drone holds right through the hesitation (no dead air): it thickens instead
+music.add(S.pad(["D2", "A2"], 4.6, 1.0, attack=2.5, release=0.25, cutoff=700, seed=3), 1.4, -24)
+H = C["hover"]
+# the unsent half rises out of the types as a candidate: a xun sighs, a soft glassy lift
+lead.add(S.flute_line([(fr(H["suggest"]) - 0.02, 0.24, "A3"), (fr(H["suggest"]) + 0.22, 0.32, "G#3")], 1.0, breath=0.3, vib=0.006, seed=5, kind="xun"), 0.0, -17)
+bells.add(X.shimmer(0.35, ["E6", "B5", "F#6"], (10, 26), 1.0, 6, 0.3), fr(H["suggest"]), -30, pan=0.2)
+music.add(S.sine_pad(["D1", "A1"], fr(H["send"]) - fr(H["slow"]) + 0.1, 1.0, attack=0.5, release=0.05), fr(H["slow"]), -19)
+# two heartbeats on the send button's pulses; the room holds its breath under them
+drums.add(S.heartbeat(1.0, True), fr(H["beat1"]), -8)
+drums.add(S.heartbeat(1.0, False), fr(H["beat2"]), -11)
+drums.add(body(S.heartbeat(1.0, True)), fr(H["beat1"]), -15)  # (v4.0: felt on a phone too)
+drums.add(body(S.heartbeat(1.0, False)), fr(H["beat2"]), -18)
+fxb.add(S.reverse_swell(fr(H["send"]) - fr(H["slow"]), 1.0, 12), fr(H["slow"]), -21)
+sfx.add(X.paper_rustle(0.5, 1.0, 13, 600, 3000), fr(H["slow"]), -36)
+
+# ======================================================== B · 发送 → 字与心事 (6–9 s)
+T = C["title"]
+ui.add(S.key_tap(1.0, 999), fr(T["send"]), -14)
+sweep = S.n_samples(0.07)
+tt = S.t_axis(sweep)
+ui.add(S.fade(np.sin(2 * np.pi * np.cumsum(700 + 900 * tt / 0.07) / SR), 0.002, 0.02), fr(T["send"]), -20)
+fxb.add(S.whoosh(0.42, 350, 7000, 1.0, 7, 0.75), fr(T["send"]), -13)
+fxb.add(S.reverse_swell(0.5, 1.0, 9), fr(T["impact"]) - 0.5, -12)
+# the forme comes down as one: its frame creaks, then twelve types strike at once
+sfx.add(S.creak(0.22, 1.0, 149, 60, 300), fr(T["impact"]) - 0.3, -26, pan=-0.1)
+for k in range(12):
+    sfx.add(S.clack(1.0, 150 + k) * 0.6, fr(T["impact"]) + k * 0.0035, -18 - k * 0.3, pan=-0.55 + k * 0.1)
+fxb.add(S.impact(1.0, 21), fr(T["impact"]), -1.5)
+fxb.add(body(S.impact(1.0, 21)), fr(T["impact"]), -8)  # (v4.0: felt on a phone too)
+sfx.add(S.splash(0.9, 1.0, 22), fr(T["impact"]), -10)
+drums.add(S.crash(1.0, 23, 1.6), fr(T["impact"]), -19)
+for k in range(14):
+    sfx.add(S.clack(1.0, 300 + k), fr(T["impact"]) + rnd.uniform(0.01, 0.45) ** 1.4, -17 - k * 0.6, pan=rnd.uniform(-0.8, 0.8))
+fxb.add(S.reverse_swell(fr(T["lock"]) - fr(T["converge"]), 1.0, 31), fr(T["converge"]), -11)
+fxb.add(S.riser(fr(T["lock"]) - fr(T["converge"]), 1.0, 32), fr(T["converge"]), -17)
+rb = S.bell("D5", 1.4, 1.0, seed=33)[::-1]
+bells.add(rb, fr(T["lock"]) - len(rb) / SR, -19)
+for nt, db in [("D3", -8), ("A3", -11), ("D4", -12), ("F#4", -15)]:
+    bells.add(S.bell(nt, 4.0, 1.0, seed=sum(map(ord, nt)) % 1000), fr(T["lock"]), db, pan=rnd.uniform(-0.2, 0.2))
+drums.add(S.taiko(1.0, 41), fr(T["lock"]), -5)
+bass.add(S.bass808("D1", 1.0, 1.0), fr(T["lock"]), -8)
+gl = ["D4", "E4", "F#4", "A4", "B4", "D5", "E5", "F#5", "A5", "B5", "D6"]
+for k, nt in enumerate(gl):
+    music.add(S.guzheng(nt, 3.2, 1.0, 0.75, seed=400 + k), fr(T["lock"]) - 0.22 + k * 0.022, -21 + k * 0.3, pan=-0.5 + k * 0.1)  # v5.0: −4 dB, rings out
+bells.add(S.bell("A5", 1.8, 1.0, [(1, 1, 0.6), (2.0, 0.25, 0.3), (3.0, 0.1, 0.2)], seed=44), fr(T["subtitle"]), -23, pan=0.25)
+for k in range(8):
+    drums.add(S.hat(1.0, False, 500 + k), fr(T["lock"]) + k * 0.125 + 0.0625, -27 + (2 if k % 2 else 0), pan=0.25)
+music.add(S.pad(["D3", "A3", "E4"], 1.1, 1.0, attack=0.6, release=0.4, cutoff=1500, seed=6), fr(T["lock"]), -24)
+music.add(S.guzheng("D5", 2.6, 1.0, 0.8, bend=7, bend_at=0.03, bend_dur=0.24, seed=55), fr(T["pull"]), -16, pan=0.2)  # v5.0: −4 dB, rings out
+sfx.add(S.creak(0.32, 1.0, 56, 70, 520), fr(T["pull"]), -22, pan=0.3)
+fxb.add(S.whoosh(0.32, 6500, 700, 1.0, 57, 0.35), fr(262), -10, pan=0.4)
+fxb.add(S.riser(0.35, 1.0, 58), fr(270) - 0.35, -20)
+
+# ======================================================== C · 一线山南海北 (9–17 s)
+BARS = [9.0, 11.0, 13.0, 15.0]
+bass_notes = ["D2", "B1", "A1", "D2"]
+pads = [["D3", "A3", "E4"], ["B2", "F#3", "D4"], ["A2", "E3", "B3"], ["D3", "A3", "F#4"]]
+cut = [1500, 1800, 2300, 3200]
+osti = [
+    "D5 A4 B4 A4 D5 E5 D5 A4 F#5 E5 D5 A4 E5 D5 B4 A4",
+    "B4 F#4 A4 F#4 B4 D5 B4 F#4 D5 B4 A4 F#4 A4 B4 D5 E5",
+    "A4 E4 F#4 E4 A4 B4 A4 E4 B4 A4 F#4 E4 F#4 A4 B4 D5",
+    "D5 A4 B4 D5 E5 F#5 E5 D5 F#5 A5 F#5 E5 D5 E5 F#5 A5",
+]
+for b, b0 in enumerate(BARS):
+    groove(b0, bass_notes[b], pads[b], cut[b], osti[b], 600 + b * 200, shaker=b >= 1, glide="A2" if b == 3 else None)
+    if b % 2 == 1:
+        for k in range(8):
+            drums.add(S.hat(1.0, False, 700 + b * 8 + k), b0 + 12 * STEP + k * STEP / 2, -27 + k, pan=0.28)
+MELODY = [
+    (9.5, 0.25, "A4"), (9.75, 0.25, "B4"), (10.0, 0.5, "D5"), (10.5, 0.25, "E5"), (10.75, 0.25, "D5"),
+    (11.0, 1.0, "F#5"), (12.0, 0.25, "E5"), (12.25, 0.25, "D5"), (12.5, 0.5, "B4"),
+    (13.0, 0.5, "A4"), (13.5, 0.25, "B4"), (13.75, 0.25, "D5"), (14.0, 0.5, "E5"), (14.5, 0.5, "A5"),
+    (15.0, 1.0, "B5"), (16.0, 0.25, "A5"), (16.25, 0.25, "F#5"), (16.5, 0.25, "E5"), (16.75, 0.25, "D5"),
+    (17.0, 0.8, "D5"),  # (v3.1: 0.8 s, not 1.3: it no longer lies over the bounce of 雀跃)
+]
+# (fifth version) 甲 and 乙 as two breaths: the last note of 甲 is cut short, so the line breathes before 乙
+def verse_lines(notes, t_split, db, seed, **kw):
+    a = [(s, d, n) for s, d, n in notes if s < t_split - 1e-6]
+    b = [(s, d, n) for s, d, n in notes if s >= t_split - 1e-6]
+    s_, d_, n_ = a[-1]
+    a[-1] = (s_, min(d_, t_split - s_ - 0.18), n_)
+    dizi(a, a[0][0], db, seed, **kw)
+    dizi(b, b[0][0], db, seed + 1, **kw)
+
+
+verse_lines(MELODY, 13.0, -9, 9)
+# geese: wings on the beat, honks calling across the flock
+for k in range(8):
+    sfx.add(X.wing_flap(0.22, 1.0, 1800 + k), 9.0 + k * 0.5 - 0.06, -27, pan=0.1 + 0.05 * (k % 3))
+for t0, f0, pan in [(9.12, 330, 0.25), (9.3, 300, 0.4), (9.86, 345, 0.1), (10.4, 315, 0.35), (10.62, 290, 0.5)]:
+    sfx.add(X.goose_honk(f0, 0.2, 1.0, int(t0 * 100)), t0, -22, pan=pan)
+fxb.add(S.whoosh(0.5, 900, 6000, 1.0, 1810, 0.5), fr(326) - 0.1, -17, pan=0.3)  # the thread runs on ahead
+# beacons: each near tower flares as the line reaches it, then the far chain races off
+for k, f in enumerate([329, 337, 357, 378]):
+    sfx.add(X.fire_whump(1.0, 1900 + k), fr(f), -13 - k * 0.5, pan=-0.2 + 0.15 * k)
+    sfx.add(X.crackle(2.2, 22, 1.0, 1910 + k) * np.linspace(1, 0, S.n_samples(2.2)) ** 1.5, fr(f) + 0.1, -29, pan=-0.2 + 0.15 * k)
+for k in range(14):
+    sfx.add(X.fire_whump(1.0, 1950 + k, 0.8), fr(336 + k * 3.5), -26 - k * 0.7, pan=0.5 - k * 0.04)
+# the telegraph: relay clicks and Morse over the mains hum
+morse = [(0, 0.05), (1, 0.05), (3, 0.14), (5, 0.05), (6, 0.14), (8, 0.05), (9, 0.05), (10, 0.05), (12, 0.14), (14, 0.05), (15, 0.05)]
+for rep in range(2):
+    for s, d in morse:
+        sfx.add(S.beep(880.0, d, 1.0), 13.0 + rep * 1.0 + s * STEP / 2, -25, pan=0.15)
+        sfx.add(S.wood_tick(1.0, 2000 + rep * 20 + s) * 0.6, 13.0 + rep * 1.0 + s * STEP / 2, -31, pan=0.2)
+hum_n = S.n_samples(2.0)
+ht = S.t_axis(hum_n)
+sfx.add(S.fade(S.norm(np.sin(2 * np.pi * 100 * ht) + 0.4 * np.sin(2 * np.pi * 200 * ht) + 0.2 * np.sin(2 * np.pi * 300 * ht)), 0.2, 0.3), 13.0, -36)
+for k in range(10):  # light in the fibre
+    bells.add(S.bell(["D6", "F#6", "A6", "B6"][k % 4], 0.9, 1.0, [(1, 1, 0.5), (2.0, 0.2, 0.2)], seed=1100 + k), 15.0 + k * 0.1875, -29 + k * 0.4, pan=rnd.uniform(-0.6, 0.6))
+fxb.add(S.riser(1.0, 1.0, 1200), 16.0, -12)
+fxb.add(S.reverse_swell(0.62, 1.0, 1201), 17.0 - 0.62, -13)
+for w in C["thread"]["words"]:
+    for k, f in enumerate(w["at"]):
+        ch = w["text"][k]
+        if ch in "。、":
+            sfx.add(S.wood_tick(1.0, 1300 + f), fr(f), -24)
+            continue
+        if w["text"].startswith("红"):
+            bells.add(S.bell(["E6", "D6", "B5", "A5"][k % 4], 1.0, 1.0, [(1, 1, 0.5), (2.0, 0.25, 0.25), (3.0, 0.08, 0.15)], seed=1400 + f), fr(f), -21, pan=-0.2 + 0.1 * k)
+        else:
+            strong = ch == "年" and k == 2
+            drums.add(S.tom(1.0, 92 + 8 * (k % 2), 1500 + f), fr(f), -13 if strong else -17, pan=-0.15 + 0.1 * k)
+            fxb.add(S.whoosh(0.09, 3000, 9000, 1.0, 1600 + f, 0.3), fr(f) - 0.06, -27)
+
+# ======================================================== D · 雀跃更浓于忐忑 (17–21 s)
+# Third version: 17–19.5 s is kept exactly (已送达, the two drops, the burst, the climbing figure).
+# After that nothing new starts in the middle of a phrase: the climbing strings hand their last note to
+# the dizi at 19.5, which sings the rest of the verse from there (section E); the three sparrows land on
+# its notes with chirps and wings only.
+D = C["inkheart"]
+bells.add(S.ding(1.0), fr(D["land"]), -8, pan=0.25)  # 已送达
+bass.add(S.bass808("D1", 1.6, 1.0, punch=1.4), fr(D["land"]), -10)
+music.add(S.pad(["D3", "F#3", "A3", "E4"], 3.4, 1.0, attack=0.6, release=1.0, cutoff=2400, seed=81), fr(D["land"]), -19)
+# a light, skipping groove: kick on 1 and 3, brushed off-beats, pizzicato bounce — two bars and a half
+for b0 in (17.0, 19.0, 21.0):
+    for s in (0, 8):
+        if b0 == 21.0 and s == 8:
+            continue
+        drums.add(S.kick(1.0, 2100 + int(b0 * 10) + s), b0 + s * STEP, -9)
+    for s in range(2, 16 if b0 < 21.0 else 8, 4):
+        drums.add(S.hat(1.0, False, 2120 + int(b0 * 10) + s), b0 + s * STEP, -22, pan=0.25)
+bounce = "D5 - A4 - B4 D5 - A4 F#5 - E5 D5 - B4 A4 -".split()
+for b0, sh in (() if not OLD_OSTI else ((17.0, 0), (19.0, 1))):  # v5.0: the layer instead
+    for s, nt in enumerate(bounce):
+        if nt != "-":
+            if b0 == 19.0 and s >= 8:  # third version: the bounce hands the line to the dizi at 20.0
+                continue
+            music.add(S.guzheng(nt if not sh else {"D5": "E5", "F#5": "A5"}.get(nt, nt), 0.5, 1.0, 0.85, t60=0.7, seed=2200 + int(b0) * 20 + s), b0 + s * STEP, -23, pan=0.3 if s % 2 else -0.3)
+# 忐忑: pale ink, a low string that wavers; 雀跃: the dense drop
+sfx.add(X.water_drop(620, 1.0, 2300, 0.09), fr(D["drop1"]), -14)
+sfx.add(S.splash(0.5, 1.0, 2301), fr(D["drop1"]), -24)
+for k, nt in enumerate(["D5", "F#5", "A5", "D6"]):
+    music.add(S.guzheng(nt, 1.8, 1.0, 0.7, vib=0.12, seed=1700 + k), fr(D["drop1"]) + k * 0.055, -13, pan=-0.3 + 0.12 * k)
+bells.add(S.bell("D6", 1.5, 1.0, seed=1710), fr(D["drop1"]) + 0.2, -24, pan=-0.3)
+sfx.add(X.water_drop(420, 1.0, 2302, 0.12), fr(D["drop2"]), -17, pan=0.3)
+music.add(S.guzheng("A2", 2.0, 1.0, 0.4, bend=-1, bend_at=0.12, bend_dur=0.35, seed=1720), fr(D["drop2"]), -13, pan=0.35)
+music.add(S.guzheng("E3", 1.6, 1.0, 0.4, vib=0.35, seed=1721), fr(D["drop2"]) + 0.25, -20, pan=0.4)
+# the burst: 雀跃 throws its ink up — a splash, a bright run climbing two octaves, a rush of small wings
+B = fr(D["burst"])
+sfx.add(S.splash(0.9, 1.0, 2350), B, -12)
+sfx.add(X.water_drop(300, 1.0, 2351, 0.15), B, -16)
+drums.add(S.taiko(0.9, 2352), B, -13)
+for k, nt in enumerate(["D5", "E5", "F#5", "A5", "B5", "D6", "E6", "F#6"]):
+    music.add(S.guzheng(nt, 1.0, 1.0, 0.75, t60=0.9, seed=2360 + k), B + 0.02 + k * 0.035, -15 + k * 0.3, pan=-0.4 + 0.1 * k)
+bells.add(S.bell("A6", 1.2, 1.0, seed=2370), B + 0.3, -22, pan=0.2)
+for k in range(6):
+    sfx.add(X.flutter(0.5, 1.0, 2380 + k), B + 0.08 + k * 0.045, -20 - (k % 3), pan=-0.5 + 0.2 * k)
+for k in range(3):
+    sfx.add(X.sparrow_chirp(1.0, 2390 + k), B + 0.25 + k * 0.17, -21, pan=-0.3 + 0.3 * k)
+# the bed under the flight: the harmony moves, the low end drops in on the burst
+bass.add(S.bass808("D1", 1.0, 1.0, punch=1.8, drive=1.3), B, -9)
+music.add(S.pad(["B2", "F#3", "A3", "D4"], 2.3, 1.0, attack=0.15, release=0.8, cutoff=2600, seed=2371), 19.0, -18)
+bass.add(S.bass808("B1", 0.9, 0.9, punch=1.0, drive=1.1), 19.0, -11)
+# a quick guzheng figure climbing with the flock, sixteenths, until the one at the lens goes past
+fig = "D5 E5 F#5 A5 B5 A5 F#5 A5 B5 D6 E6 D6 B5 D6 E6 F#6".split()
+for k, nt in enumerate(fig if OLD_OSTI else []):  # v5.0: the layer instead
+    t = B + 0.12 + k * STEP
+    if t > fr(D["pass"][1]) - 0.02:
+        break
+    music.add(S.guzheng(nt, 0.45, 1.0, 0.8, t60=0.5, seed=2380 + k * 3), t, -19 + k * 0.25, pan=-0.35 + 0.045 * k)
+# the nearest one is off to the left and gone, then back low and fast, left to right
+for k in range(4):
+    sfx.add(X.wing_flap(0.1, 1.0, 2395 + k, 400, 2600), fr(D["burst"] + 4 + k * 3), -28 - k * 2, pan=-0.35 - 0.18 * k)
+C0, C1 = fr(D["cross"][0]), fr(D["cross"][1])
+for k in range(10):
+    t = k / 9
+    near = 1 - abs(t - 0.45) * 1.8
+    sfx.add(X.wing_flap(0.09, 1.0, 2400 + k, 450, 2800), C0 - 0.05 + t * (C1 - C0), -31 + 10 * max(0, near), pan=-0.85 + 1.7 * t)
+fxb.add(S.whoosh(0.75, 500, 4200, 1.0, 2410, 0.6), C0 + 0.25 * (C1 - C0), -21, pan=0.0)
+# three come down on 忐忑: chirps, small ticks and wings only — no notes, so the bounce carries on.
+# (v2 also struck a tom and a wavering string on 更浓于 at 19.6, gave each sparrow a note, moved the
+# bass to G in the middle of the bar, and began a new dizi phrase at 20.5: that is where it broke.)
+for k, f in enumerate(D["lands"]):
+    sfx.add(X.sparrow_chirp(1.0, 2420 + k), fr(f) - 0.04, -23, pan=0.25 + 0.12 * k)
+    sfx.add(S.wood_tick(1.0, 2430 + k) * 0.7, fr(f), -29, pan=0.25 + 0.12 * k)
+    sfx.add(X.wing_flap(0.12, 1.0, 2440 + k, 500, 3000), fr(f) - 0.12, -30, pan=0.25 + 0.12 * k)
+bass.add(S.bass808("B1", 0.95, 0.9, punch=0.6, drive=1.1), 20.0, -13)  # the bar stays on B minor to its end
+for k in range(3):
+    sfx.add(X.flutter(0.7, 1.0, 2500 + k), fr(D["fly"]) + k * 0.1, -24, pan=0.3 + 0.15 * k)
+    sfx.add(X.sparrow_chirp(1.0, 2510 + k, 2), fr(D["fly"]) + 0.12 + k * 0.13, -27, pan=0.5)
+fxb.add(S.whoosh(0.6, 600, 5000, 1.0, 2520, 0.5), fr(D["fly"]) + 0.15, -25, pan=0.4)
+sfx.add(X.paper_rustle(0.7, 1.0, 2530), fr(D["end"]) - 0.5, -27)  # the sheet parts at the fold
+
+# ======================================================== E · the verse answered · 与君南北不同春 (21–26 s)
+E = C["spring"]
+# The verse answered: the climbing strings of the burst end on F#, and the dizi takes that F# up at
+# 19.5 — the long note of the verse's second bar, joined in progress — then sings the rest of the verse,
+# the very notes of 12–17 s eight seconds on. E D B fall with the three sparrows landing on 忐忑; then
+# A B D E A over G, the long B across 南 and 北 (Bm), the run down over A, home on D at 25 (春 lands
+# just before it). The cut to 南北 at 22.0 falls on the bar's third beat; the line runs on through it.
+VERSE_HALF = [(19.5, 0.5, "F#5")] + [(s + 8.0, d, n) for s, d, n in MELODY if s >= 12.0]
+VERSE_HALF[-1] = (25.0, 1.5, "D5")  # v4.1: held one beat longer, through the fermata (v4.0: 1.0)
+verse_lines(VERSE_HALF, 21.0, -10, 2650, vib=0.012)
+music.add(S.pad(["G2", "D3", "B3", "E4"], 2.1, 1.0, attack=0.3, release=0.6, cutoff=1800, seed=2610), 21.0, -20)
+music.add(S.pad(["B2", "F#3", "A3", "D4"], 1.1, 1.0, attack=0.25, release=0.4, cutoff=1500, seed=2611), 23.0, -21)
+music.add(S.pad(["A2", "E3", "C#4", "E4"], 1.1, 1.0, attack=0.2, release=0.4, cutoff=1500, seed=2612), 24.0, -21)
+# v4.1: held one beat longer (1.3 → 1.8 s): the beat inserted at 26.0 s is this chord's fermata
+music.add(S.pad(["D3", "A3", "F#4"], 1.8, 1.0, attack=0.15, release=0.8, cutoff=1600, seed=2613), 25.0, -21)
+bass.add(S.bass808("G1", 1.9, 0.8, punch=0.6, drive=1.2), 21.0, -14)
+bass.add(S.bass808("B1", 0.95, 0.8, punch=0.6, drive=1.2), 23.0, -14)
+bass.add(S.bass808("A1", 0.95, 0.8, punch=0.6, drive=1.2), 24.0, -14)
+bass.add(S.bass808("D2", 0.95, 0.8, punch=0.6, drive=1.2), 25.0, -14)
+# the pulse stays one soft kick a second from 雀跃 through 南北 into the clock, off-beats brushed
+drums.add(S.kick(1.0, 2620) * 0.8, 22.0, -14)
+drums.add(S.kick(1.0, 2621) * 0.8, 24.0, -14)
+for t in (23.0, 25.0):
+    drums.add(S.kick(1.0, 5300 + int(t)) * 0.8, t, -15)
+for t in (22.5, 23.5, 24.5):
+    drums.add(S.hat(1.0, False, 5320 + int(t * 2)) * 0.7, t, -27, pan=0.28)
+# (v4.1: they leave with its picture, fading over 25.95–26.4 s as the pool comes in and before the
+# first drip; v4.0 ran on to 26.6, under the drips)
+_out = lambda n, d: np.clip((d - np.arange(n) / SR) / 0.45, 0, 1)
+_rn = S.n_samples(4.4)
+amb.add(X.rain(4.4, 1.0, 2600) * np.minimum(1, np.linspace(0, 6 * 4.4 / 4.6, _rn)) * _out(_rn, 4.4), fr(E["start"]), -28, pan=-0.85)
+amb.add(X.wind(4.4, 1.0, 2601, 500, 3200) * np.minimum(1, np.linspace(0, 5 * 4.4 / 4.6, _rn)) * _out(_rn, 4.4), fr(E["start"]), -31, pan=0.85)
+# the word painting stays, but quiet and inside the chord, so it colours the tune instead of taking
+# its place: 南 a low string on the left (south), 北 a small bell on the right (north), 春 a soft drum,
+# and the chord of home on the downbeat after it, in both lights
+music.add(S.guzheng("B2", 2.2, 1.0, 0.45, seed=2632), fr(E["nan"]), -19, pan=-0.75)  # 南
+bells.add(S.bell("F#6", 2.0, 1.0, [(1, 1, 0.7), (2.0, 0.2, 0.3), (3.01, 0.06, 0.2)], seed=2633), fr(E["bei"]), -24, pan=0.75)  # 北
+amb.add(X.wind(1.2, 1.0, 2634, 900, 4000), fr(E["bei"]) - 0.1, -31, pan=0.8)
+drums.add(S.taiko(1.0, 2646), fr(E["chun"]), -18)  # 春
+for nt, pan, db in [("D3", -0.6, -16), ("D4", -0.3, -17), ("A4", 0.3, -18), ("D5", 0.6, -18)]:
+    music.add(S.guzheng(nt, 2.4, 1.0, 0.6, seed=2640 + len(nt) * 7 + int(pan * 10)), 25.0 + (pan + 0.6) * 0.02, db, pan=pan)
+bells.add(S.bell("D6", 2.2, 1.0, seed=2645), 25.0, -24)
+sfx.add(S.wood_tick(1.0, 2647), fr(E["stop"]), -27)
+
+# ======================================================== F1 · 昔人多恨漏声长 (25–28 s)
+# v4.1: from here on everything is one beat later (WARP); the room tone of the pool comes in with its
+# picture, at 26.0 s, under the last of 南北's chord
+WARP = GAP / FPS
+K = C["clock"]
+amb.add(S.room_tone(3.7, 1.0, 2701), fr(K["start"]) - WARP, -44)
+music.add(S.pad(["A2", "E3", "B3"], 3.0, 1.0, attack=0.4, release=0.8, cutoff=1300, seed=2710), 26.0, -19.5)
+bass.add(S.bass808("A1", 1.9, 0.8, punch=0.5, drive=1.1), 26.0, -14)
+bass.add(S.bass808("B1", 1.0, 0.8, punch=0.5, drive=1.1), 28.0, -15)
+drip_notes = ["A5", "F#5", "E5", "D5", "B4", "A4", "F#4"]  # the drops carry the melody down
+for k, f in enumerate(K["drips"]):
+    last = k == len(K["drips"]) - 1
+    soft = 1.0 if k == 0 else 0.0  # v4.0: the first is seen landing now (v3.1 held it back 3 dB)
+    sfx.add(X.water_drop(S.hz(drip_notes[k]) / 1.55, 1.0, 2720 + k, 0.11), fr(f), (-10 if not last else -9) - soft, pan=0.18)
+    bells.add(S.bell(drip_notes[k], 2.4, 1.0, [(1, 1, 0.9), (2.0, 0.12, 0.3)], seed=2730 + k), fr(f), -17.5 - soft * 0.7, pan=0.18)
+    # (v4.0 second draft: no more wood "tock" a quarter second after every second drop — there is no
+    # clock to see in the pool, and between the drops it read as one drop too many)
+# the wait keeps a pulse: a soft heartbeat-kick on 1 and 3, a breath of shaker between
+for k in range(6):
+    t0 = 26.0 + k * 1.0
+    drums.add(S.kick(1.0, 2770 + k) * 0.8, t0, -15)
+    drums.add(S.hat(1.0, False, 2780 + k) * 0.7, t0 + 0.5, -28, pan=0.3)
+fxb.add(S.reverse_swell(0.5, 1.0, 2760), fr(K["match"]) - 0.5, -24)
+
+# ======================================================== F2 · 只今无处听更漏 (28–31 s)
+fxb.add(S.whoosh(0.35, 3000, 600, 1.0, 2800, 0.2), fr(K["match"]), -22)
+ui.add(X.ui_blip(S.hz("F#5"), 1.0), fr(K["match"]) + 0.02, -18)
+# G under the dots (A F# E on the guzheng make it G major 9), so the tune of 一线 can come home to D
+music.add(S.pad(["G2", "D3", "B3", "F#4"], 2.0, 1.0, attack=0.3, release=0.7, cutoff=1800, seed=2810), 29.0, -20)
+bass.add(S.bass808("G1", 1.9, 0.8, punch=0.5, drive=1.1), 29.0, -15)
+# The typing dots, on the beat. Each dot hops on its beat and is highest at 29.5, 30.0 and 30.5 s (dot 1,
+# which grows out of the drop, hops too since the eighth version: its arrival used to override its hop,
+# so it never moved). The three sounds sit on those peaks, not on the frames the hops are cued from
+# (29.4, 29.9, 30.4), which run a little ahead of what one sees. Each is a small blip, a drop of water and
+# one note of the strings (A F# E), together (the strings used to come a fifth of a second late).
+DOT_T = [29.5, 30.0, 30.5]
+for k, t in enumerate(DOT_T):  # the typing dots fall like the drops did
+    ui.add(X.ui_blip(S.hz(["E6", "D6", "B5"][k]), 1.0), t, -16, pan=-0.15)
+    sfx.add(X.water_drop(S.hz(["E6", "D6", "B5"][k]) / 1.55, 1.0, 2820 + k, 0.04), t, -30, pan=-0.15)
+# 无处听更漏: the next drop is due on the stop — and does not come
+for k in range(4):
+    drums.add(S.hat(1.0, False, 2830 + k), 29.0 + 0.25 + k * 0.5, -28, pan=0.3)
+music.add(S.guzheng("A4", 2.0, 1.0, 0.5, seed=2840), DOT_T[0], -18, pan=0.1)
+music.add(S.guzheng("F#4", 2.0, 1.0, 0.5, seed=2841), DOT_T[1], -19, pan=0.1)
+music.add(S.guzheng("E4", 2.4, 1.0, 0.5, vib=0.1, seed=2842), DOT_T[2], -18, pan=0.1)
+fxb.add(S.riser(1.0, 1.0, 2850), fr(C["history"]["start"]) - 1.0, -22)
+
+
+def speed_ticks(samples, gain=1.0, seed=0, per_px=0.55, f0=2600):
+    """Scroll ticks whose rate follows the on-screen scroll speed: samples = [(frame, px per frame)]."""
+    r = np.random.default_rng(seed)
+    t0, t1 = fr(samples[0][0]), fr(samples[-1][0])
+    fs = np.array([fr(f) for f, _ in samples])
+    vs = np.array([v for _, v in samples])
+    n = S.n_samples(t1 - t0 + 0.1)
+    y = np.zeros(n)
+    tt, k = t0, 0
+    while tt < t1:
+        v = float(np.interp(tt, fs, vs))
+        rate = max(0.0, v * per_px)
+        if rate < 1.5:
+            tt += 0.05
+            continue
+        c = S.modal([f0 * r.uniform(0.9, 1.1)], [0.006], [1], 0.02, 1.0, 9000 + seed * 100 + k, 0.5)
+        i = S.n_samples(tt - t0)
+        m = min(len(c), n - i)
+        y[i:i + m] += c[:m] * r.uniform(0.5, 1.0) * min(1.0, 0.35 + v / 60)
+        tt += 1.0 / rate
+        k += 1
+    return S.norm(y, gain), t0
+
+
+def ember(dur, vel=1.0, seed=0):
+    """Paper glyphs catching fire: soft high crackle over a breathy hiss."""
+    n = S.n_samples(dur)
+    t = S.t_axis(n)
+    r = np.random.default_rng(seed)
+    hiss = S.bp(r.standard_normal(n), 2500, 9000) * 0.25 * np.minimum(1, t / 0.4)
+    return S.norm(X.crackle(dur, 38, 1.0, seed) * 0.8 + hiss, vel)
+
+
+# ======================================================== G · 往事 — the verse again (31.0–39.0 s)
+# The record runs back to where it all began, and so does the tune: the verse a third time, the same
+# melody as 一线 with a bar of the same groove under each of its bars. Its strong notes fall on the
+# picture: D as the record starts back (32.0), the held F# on 2023 where his thumb lingers (33.0), the
+# held B as the 月 lift off the page (37.0), home on D as the moon comes whole (39.0).
+G = C["history"]
+STOP = fr(G["stop"])
+fxb.add(S.whoosh(0.8, 400, 5000, 1.0, 2900, 0.7), fr(G["start"]), -17)
+# two pulls back through the years with a breath on 2023 between them; ticks follow the scroll
+HS = [(956, 0), (962, 1.9), (965, 11.8), (968, 30.1), (971, 56.9), (974, 88.9), (977, 56.9), (980, 30.1), (983, 11.8), (986, 1.9), (989, 3.6), (1013, 3.6), (1016, 1.8),
+      (1019, 2.1), (1022, 8.4), (1025, 19.0), (1028, 33.7), (1031, 52.7), (1034, 75.8), (1037, 103.2), (1040, 113.3), (1043, 84.5), (1046, 59.9), (1049, 39.6), (1052, 23.4), (1055, 11.5), (1058, 3.8), (1061, 0.3), (1064, 0)]
+ticks, tt0 = speed_ticks(HS, 1.0, 2901)
+sfx.add(ticks, tt0, -25, pan=0.12)
+sfx.add(X.paper_rustle(0.9, 1.0, 2902, 1500, 8000), fr(932), -31)
+sfx.add(X.paper_rustle(1.3, 1.0, 2904, 1500, 8000), fr(990), -31)
+# a small wooden flip as each year's divider goes by, lower as they go back
+for k, f in enumerate([975, 990, 1034, 1039, 1043, 1047]):
+    sfx.add(S.wood_tick(1.0, 2910 + k), fr(f), -24, pan=-0.45)
+    bells.add(S.bell(["B5", "A5", "F#5", "E5", "D5", "B4"][k], 0.9, 1.0, [(1, 1, 0.5), (2.0, 0.2, 0.2)], seed=2920 + k), fr(f), -32, pan=-0.45)
+# 31.0 is where the drop that never comes (无处听更漏) would have fallen: no drum there, only the
+# harmony, the low end and the strings, and the tune's first two notes; the drums come in with the
+# record (32.0) on the tune's first D
+b0 = 31.0
+music.add(S.pad(["D3", "A3", "E4"], 2.0, 1.0, attack=0.3, release=0.6, cutoff=2600, seed=3060), b0, -21)
+bass.add(S.bass808("D2", 8 * STEP + 0.05, 0.8, punch=0.5, drive=1.2), b0, -9)
+bass.add(S.bass808("D2", 8 * STEP + 0.05, 1.0), b0 + 8 * STEP, -7)  # v5.0: with the kit, on three
+for s, nt in enumerate(osti[0].split() if OLD_OSTI else []):  # v5.0: the layer instead
+    music.add(S.guzheng(nt, 0.7, 1.0, 0.8 if s >= 8 else 0.62, t60=1.1, seed=3070 + s), b0 + s * STEP, (-20 if s >= 8 else -23) + (1.5 if s % 4 == 0 else 0), pan=-0.35 if s % 2 else 0.35)
+shaker(b0, b0 + 1.0, -29, 3090)
+drums.add(S.crash(1.0, 3001, 2.0), b0 + 1.0, -13, pan=-0.3)
+drums.add(S.taiko(1.0, 3002), b0 + 1.0, -11)
+drums.add(S.snare(1.0, 3006), b0 + 8 * STEP, -10)
+drums.add(S.clap(1.0, 3007), b0 + 8 * STEP, -13, pan=0.1)
+drums.add(S.kick(1.0, 3003), b0 + 8 * STEP, -8)
+drums.add(S.kick(1.0, 3004), b0 + 11 * STEP, -8)
+for s in range(8, 16, 2):
+    drums.add(S.hat(1.0, s == 14, 3010 + s), b0 + s * STEP, -18 if s % 4 == 0 else -21, pan=0.28)
+for s in range(8, 16):
+    drums.add(S.hat(1.0, False, 3040 + s) * 0.6, b0 + s * STEP + 0.006, -27 + (2 if s % 4 == 2 else 0), pan=-0.32)
+groove(33.0, "B1", ["B2", "F#3", "D4"], 2200, osti[1], 3200, crash=False, osti_db=-20)
+# 35.0 A: the record settles on 2019 (35.4), the search, the pick — the groove lighter, still walking
+groove(35.0, "A1", ["A2", "E3", "B3"], 2300, osti[2], 3300, crash=False, full=False, osti_db=-21, kick_db=-8)
+drums.add(S.taiko(1.0, 3300), STOP, -15)  # the record stops on 2019: an accent off the beat
+sfx.add(S.wood_knock(1.0, 3301), STOP, -18)
+# 37.0 D: the 月 lift off and burn — the crash marks the cut, the tune holds its B across it
+groove(37.0, "D2", ["D3", "A3", "F#4"], 2800, osti[3], 3350, osti_db=-20)
+verse_lines([(s + 22.0, d, n) for s, d, n in MELODY], 35.0, -10, 3190)
+# THE REFRAIN is the dizi line of the lights, as v3 played it there (its own first bar is 54.5)
+CITY_LINE = [(56.0, 0.25, "A5"), (56.25, 0.25, "B5"), (56.5, 0.75, "D6"), (57.25, 0.25, "E6"), (57.5, 0.5, "D6"), (58.0, 0.5, "B5"),
+             (58.5, 0.75, "E6"), (59.25, 0.25, "F#6"), (59.5, 0.5, "E6"), (60.0, 0.25, "D6"), (60.25, 0.25, "E6"),
+             (60.5, 1.0, "A6"), (61.5, 0.5, "F#6"), (62.0, 0.5, "E6"), (62.5, 1.25, "D6")]
+for k, d in enumerate([0, 3, 6]):  # y · u · e
+    ui.add(S.key_tap(1.0, 3310 + k), fr(G["search"] + d), -18)
+ui.add(S.wood_tick(1.0, 3320), fr(G["search"] + 8), -24)
+sfx.add(S.wood_knock(1.0, 3321), fr(G["pick"]), -17)  # 拣字, once more (no note: the tune is singing)
+sfx.add(S.clack(1.0, 3322), fr(G["pick"]) + 0.02, -18)
+bells.add(X.shimmer(0.9, ["D7", "A6", "F#6", "E7", "B6"], (30, 60), 1.0, 3330, 0.4), fr(G["glow"]), -24)
+bells.add(S.bell("A6", 1.8, 1.0, seed=3331), fr(G["glow"]), -26, pan=0.2)
+fxb.add(S.riser(fr(G["end"]) - fr(G["lift"]) + 0.3, 1.0, 3340), fr(G["lift"]), -18)
+fxb.add(S.whoosh(0.6, 800, 7000, 1.0, 3341, 0.8), fr(G["lift"]), -19, pan=-0.1)
+
+# ======================================================== H · 月 → pre-chorus → the count (36.8–44.5 s)
+def story_seconds(f):
+    """The clock's story time at film frame f (the film's own frames): HUD.tsx storySeconds, ported."""
+    st, cn = CUES_NEW["story"], CUES_NEW
+    ru, le, rush, slow = st["realUntil"], st["lapseEnd"], cn["clock"]["stop"], cn["moon"]["form"]
+    cr = 30 / cn["beat"]
+    s1 = st["t0"] + ru / 30
+    ti, th, to = (rush - ru) / 30, (slow - rush) / 30, (le - slow) / 30
+    rate = (st["lapseTo"] - s1 - ti / 2 - cr * to / 2) / (ti / 2 + th + to / 2)
+    area = lambda u: u ** 3 - u ** 4 / 2
+    if f <= ru:
+        return st["t0"] + f / 30
+    if f <= rush:
+        u = (f - ru) / 30 / ti
+        return s1 + ti * (u + (rate - 1) * area(u))
+    s2 = s1 + ti * (1 + rate) / 2
+    if f <= slow:
+        return s2 + rate * (f - rush) / 30
+    s3 = s2 + rate * th
+    if f <= le:
+        u = (f - slow) / 30 / to
+        return s3 + to * (rate * u - (rate - cr) * area(u))
+    return st["lapseTo"] + (f - le) // 15
+
+
+def second_turns(f0, f1):
+    """[(frame, second)]: the fractional frames in (f0, f1) at which the clock's second turns over."""
+    out, n = [], int(np.floor(story_seconds(f0) + 1e-6)) + 1
+    while story_seconds(f1) - n > -1e-6:
+        lo, hi = f0, f1
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if story_seconds(mid) < n else (lo, mid)
+        out.append((hi, n))
+        n += 1
+    return out
+
+
+LAPSE_TICKS = [t for t in second_turns(CUES_NEW["moon"]["fold"], CUES_NEW["story"]["lapseEnd"]) if t[1] < CUES_NEW["story"]["lapseTo"]]
+print("lapse ticks:", " ".join(f"{x:.2f}" for x, _ in LAPSE_TICKS), file=sys.stderr)
+M = C["moon"]
+R = C["reply"]
+T_FORM, T_FOLD, T_LAPSE = fr(M["form"]), fr(M["fold"]), fr(C["story"]["lapseEnd"])
+MID = fr(M["midnight"])
+TK = [fr(f) for f in M["ticks"]]
+# every 月 lifts off the record and burns into light that spirals into the moon — under the verse
+_em = ember(T_FORM - fr(M["start"]) + 0.6, 1.0, 3400)
+amb.add(_em * np.linspace(0.4, 1, len(_em)), fr(M["start"]), -28, pan=0.1)
+bells.add(X.shimmer(T_FORM - fr(M["start"]), ["D6", "E6", "F#6", "A6", "B6", "D7"], (10, 60), 1.0, 3410, 0.5), fr(M["start"]), -23)
+fxb.add(S.reverse_swell(T_FORM - fr(M["start"]), 1.0, 3411), fr(M["start"]), -20)
+# 39.0 the verse comes home on D as the moon comes whole; 39.33 its bloom, soft and inside the chord
+music.add(S.pad(["D3", "A3", "F#4", "E5"], 1.15, 1.0, attack=0.25, release=0.45, cutoff=1700, seed=3434), 39.0, -20)
+bass.add(S.bass808("D2", 1.0, 1.0, punch=0.8), 39.0, -11)
+drums.add(S.kick(1.0, 3436), 39.0, -10)
+drums.add(S.hat(1.0, False, 3437) * 0.7, 39.5, -25, pan=0.3)
+bells.add(X.gong("D3", 4.0, 1.0, 3430), T_FORM, -19)
+bells.add(S.bell("A4", 3.5, 1.0, seed=3431), T_FORM, -21, pan=-0.2)
+bells.add(S.bell("D5", 3.5, 1.0, seed=3432), T_FORM + 0.04, -22, pan=0.2)
+music.add(X.harmonic("F#6", 2.6, 1.0, 3433), T_FORM + 0.3, -26, pan=0.3)
+fxb.add(S.reverse_swell(0.6, 1.0, 3438), 39.4, -19)  # the breath in before the night opens
+# PRE-CHORUS (40.0–43.0). The moon breathes out and the night opens south and north: the strongest
+# accent since the title. Then the minutes run on toward midnight: the harmony climbs a step every two
+# beats (Bm, G, A), the drums tighten, and the dizi climbs the rising line of her reply.
+drums.add(S.crash(1.0, 3459, 2.2), 40.0, -12, pan=0.2)
+drums.add(S.taiko(1.0, 3460), 40.0, -10)
+drums.add(S.kick(1.0, 3461), 40.0, -7)
+sfx.add(X.paper_rustle(0.7, 1.0, 3460, 600, 5000), T_FOLD - 0.15, -21)
+fxb.add(S.whoosh(0.7, 300, 3000, 1.0, 3461, 0.4), T_FOLD - 0.1, -19)
+music.add(S.guzheng("F#3", 2.4, 1.0, 0.45, vib=0.04, seed=3463), T_FOLD + 0.1, -21, pan=-0.7)  # 南
+bells.add(S.bell("F#6", 2.0, 1.0, [(1, 1, 0.7), (2.0, 0.2, 0.3), (3.01, 0.06, 0.2)], seed=3464), T_FOLD + 0.2, -25, pan=0.7)  # 北
+for t0, bn, pd, sd in ((40.0, "B1", ["B2", "F#3", "D4", "A4"], 3462), (41.0, "G1", ["G2", "D3", "B3", "F#4"], 3465), (42.0, "A1", ["A2", "E3", "B3", "D4"], 3467)):
+    bass.add(S.bass808(bn, 1.0, 1.0, punch=0.9), t0, -10)
+    music.add(S.pad(pd, 1.1, 1.0, attack=0.12, release=0.35, cutoff=1500 + 300 * (t0 - 40.0), seed=sd), t0, -20)
+for k, t in enumerate((40.5, 41.0, 41.5, 42.0, 42.5)):
+    drums.add(S.kick(1.0, 3470 + k), t, -11 if t % 1 == 0 else -13)
+for t in (41.0, 42.0):
+    drums.add(S.snare(1.0, 3476 + int(t)), t, -14)
+    drums.add(S.clap(1.0, 3478 + int(t)), t, -17, pan=0.1)
+for k in range(4):  # a snare run into the count
+    drums.add(S.snare(1.0, 3600 + k), 42.5 + k * STEP, -22 + k * 2)
+for k in range(11):
+    drums.add(S.hat(1.0, False, 3490 + k), 40.25 + k * 0.25, -23 if k % 2 == 1 else -25, pan=0.28)
+shaker(40.0, 43.0, -30, 3500, shape=[(40.0, -2.0), (43.0, 1.0)])
+for j, notes in enumerate((("B3", "F#4", "B4", "D5"), ("G3", "D4", "G4", "B4"), ("A3", "E4", "A4", "B4"))):
+    for k, nt in enumerate(notes):
+        music.add(S.guzheng(nt, 0.8, 1.0, 0.7, t60=1.2, seed=3510 + j * 4 + k), 40.0 + j + k * 0.25, -21 + j, pan=-0.3 if k % 2 else 0.3)
+PRE = [(40.5, 0.25, "D5"), (40.75, 0.25, "E5"), (41.0, 0.5, "F#5"), (41.5, 0.25, "E5"), (41.75, 0.25, "F#5"), (42.0, 0.9, "A5")]  # lands on the dominant: A, then D on 子正
+dizi_r([(s, d, octave(n, REG)) for s, d, n in PRE], 40.5, -11, 3520)
+# v4.5 · the clock slows into the count (HUD storySeconds, ported below: out of real time from the first
+# drop, eight seconds a second from 31.5 s, eased from the moon coming whole at 39.83 s into a second a
+# beat at 23:59:57), so the ratchet is no longer a whirr racing faster and faster (v4.4: 6 → 34 clicks a
+# second from the fold, while the clock stood at 23:59:56). From the fold, a tick each time the clock's
+# second turns over — twelve, :45 to :56, 7.3 a second slowing to 2.1 — in the count's own tick, rising
+# (−28 → −18 dB) into the count's −16 dB, so the slowing ticks become the count; each a frame after the
+# frame its second first shows (8.5: never ahead of what one sees)
+for k, (x, n) in enumerate(LAPSE_TICKS):
+    sfx.add(X.clock_tick(1.0, 3950 + k), (x + 1) / FPS - WARP, -28 + 10 * k / (len(LAPSE_TICKS) - 1))
+fxb.add(S.riser(T_LAPSE - T_FOLD, 1.0, 3471), T_FOLD, -20)
+# 23:59:57 · 58 · 59: the one three-beat bar of the film, over a held dominant (A), the drums holding
+# their breath; on 59 the dizi breathes in (A, B) and 子正 lands the refrain's first D
+for k, f in enumerate(M["ticks"]):
+    sfx.add(X.clock_tick(1.0, 3480 + k, k == 2), fr(f), -16 + k * 2.0)
+    drums.add(S.heartbeat(1.0, k == 2), fr(f), -17 + k * 2)
+music.add(S.sine_pad(["A1", "E2"], MID - TK[0] - 0.1, 1.0, attack=0.25, release=0.2), TK[0], -19)
+music.add(S.pad(["A2", "E3", "B3", "D4"], MID - TK[0] - 0.1, 1.0, attack=0.35, release=0.2, cutoff=1100, seed=3485), TK[0], -23)
+fxb.add(S.reverse_swell(1.2, 1.0, 3490), MID - 1.2, -15)
+
+# ======================================================== H2 · CHORUS A, line 1 (44.5–52.0 s)
+# Two lines in the rhythm of the lights' line: line 1 here, line 2 is the lights' line (section J).
+# Line 1 has no pick-up: its first note is the 子正 bell. Its bars start a step higher each time (1, 2,
+# 3): through 此夜心同明月在 · 照见卿卿 to F# as her light lands at his window (48.4–48.5 — in the fifth
+# version it dropped to its lowest note there, under the landing's sounds, and was heard as broken off),
+# up to its top, A, as the unsent half surfaces (49.5), back to F# under 已读懂 (50.1), and it settles on
+# E as her reply opens (50.5–52.0), then leaves a gap. Eighth version, between the sixth (3 — 2 6̣ | 1 ——:
+# the fall to the low B sounded odd) and the seventh (3 — 5 6 | 5 ——: up to B and resting on A, it
+# outsang line 2): its top is A, its last note E. It is line 2's ending in small — line 2 at the same
+# place leaps to the high A and comes all the way home (5̇ — 3̇ 2̇ | 1̇), line 1 stops a step short (5 3 | 2).
+#   1 · 2 1 6̣ | 2 · 3 2 1 2 | 3 — 5 3 | 2 ——      (D E D B | E F# E D E | F# — A F# | E)
+# Over it D · Bm · G · D; line 2 takes the same rhythm an octave higher, on to the peak.
+CHORUS1 = [(44.5, 0.75, "D5"), (45.25, 0.25, "E5"), (45.5, 0.5, "D5"), (46.0, 0.5, "B4"),
+           (46.5, 0.75, "E5"), (47.25, 0.25, "F#5"), (47.5, 0.5, "E5"), (48.0, 0.25, "D5"), (48.25, 0.25, "E5"),
+           (48.5, 1.0, "F#5"), (49.5, 0.5, "A5"), (50.0, 0.5, "F#5"), (50.5, 1.45, "E5")]
+dizi(CHORUS1, 44.5, -10.5, 3560, vib=0.016)
+# 子正: a bell, not a blow — and the downbeat of the chorus
+bells.add(S.bell("D4", 5.0, 1.0, seed=3501), MID, -12)
+bells.add(S.bell("A3", 5.0, 1.0, seed=3502), MID + 0.01, -16, pan=0.2)
+bells.add(X.gong("D2", 6.5, 1.0, 3500), MID, -19)
+bells.add(S.bell("D5", 3.0, 1.0, [(1, 1, 0.7), (2.0, 0.2, 0.3), (3.01, 0.06, 0.2)], seed=3505), MID + 0.02, -23, pan=-0.2)
+gust = X.wind(5.5, 1.0, 3506, 220, 2600)
+gust = gust * env_curve(len(gust), [(0, 0.0), (0.3, 1.0), (1.3, 0.75), (3.0, 0.35), (5.5, 0.0)])
+fxb.add(pan_sweep(gust, -0.35, 0.4), MID, -21)
+fxb.add(S.whoosh(1.5, 250, 2400, 1.0, 3507, 0.22), MID, -23, pan=0.1)
+pet = X.paper_rustle(2.6, 1.0, 3508, 2500, 9000)  # apricot petals carried under the moon into the north
+sfx.add(pan_sweep(pet, -0.7, 0.6), MID + 0.1, -35)
+bells.add(X.shimmer(2.6, ["D7", "E7", "F#7", "A7", "B7"], (12, 2), 1.0, 3509, 0.28), MID + 0.15, -33)  # the snow
+music.add(X.harmonic("F#6", 2.4, 1.0, 3510), MID + 0.6, -27, pan=0.2)  # the moon comes clear
+music.add(X.harmonic("A6", 2.4, 1.0, 3511), MID + 1.1, -28, pan=-0.15)
+bells.add(S.bell("A6", 1.2, 1.0, [(1, 1, 0.5), (2.0, 0.2, 0.2)], seed=3512), fr(M["midnight"] + 9), -28, pan=0.6)  # her window
+# the beat: a crash on 子正 and on the landing; kick on one (and the push before three), snare on three
+drums.add(S.crash(1.0, 3700, 2.4), MID, -12, pan=-0.2)
+drums.add(S.taiko(1.0, 3701), MID, -9)
+for b in range(4):
+    b0 = MID + 2.0 * b
+    drums.add(S.kick(1.0, 3710 + b), b0, -7 if b == 0 else -9)
+    drums.add(S.kick(1.0, 3714 + b), b0 + 11 * STEP, -13)
+    drums.add(S.snare(1.0, 3720 + b), b0 + 8 * STEP, -12)
+    drums.add(S.clap(1.0, 3724 + b), b0 + 8 * STEP, -15, pan=0.1)
+    for s in range(0, 16, 2):
+        drums.add(S.hat(1.0, s == 14 and b < 3, 3730 + b * 16 + s), b0 + s * STEP, -24 if s % 4 == 0 else -26, pan=0.28)
+shaker(MID, MID + 8.0, -31, 3800, shape=[(MID, -1.0), (MID + 8.0, 2.0)])
+# v4.0 (落窗, checked for phone speakers: "not sharp, not loud"): the crash 4 dB down and its top
+# rolled off, the streak and the rustle a little softer and less bright — the band above 5 kHz jumped
+# 10 dB here, which is what a phone plays loudest
+drums.add(S.norm(S.lp(S.crash(1.0, 3705, 2.0), 6500, 1), 1.0), 48.5, -22, pan=0.3)
+drums.add(S.taiko(1.0, 3706), 48.5, -13)  # the light lands at his window
+for b0, bn, pd, sd in ((44.5, "D1", ["D3", "A3", "F#4", "E5"], 3540), (46.5, "B1", ["B2", "F#3", "D4", "A4"], 3541), (48.5, "G1", ["G2", "D3", "B3", "F#4"], 3542), (50.5, "D2", ["D3", "A3", "F#4"], 3543)):
+    bass.add(S.bass808(bn, 1.9, 1.0, punch=1.2 if b0 == MID else 0.9), b0, -8 if b0 == MID else -10)
+    music.add(S.pad(pd, 2.0, 1.0, attack=0.3, release=0.6, cutoff=1900, seed=sd), b0, -20)
+music.add(S.sine_pad(["D2", "A2"], 2.0, 1.0, attack=0.6, release=0.8), MID, -24)
+# the strings walk in eighths under the tune on each bar's chord
+for j, (b0, notes) in enumerate(() if not OLD_OSTI else ((44.5, "D3 A3 D4 E4 F#4 E4 D4 A3"), (46.5, "B2 F#3 B3 D4 E4 D4 B3 F#3"), (48.5, "G2 D3 G3 A3 B3 A3 G3 D3"))):  # v5.0: the layer instead
+    for k, nt in enumerate(notes.split()):
+        music.add(S.guzheng(nt, 0.9, 1.0, 0.7, t60=1.4, seed=3580 + j * 8 + k), b0 + k * 0.25, -20, pan=-0.3 if k % 2 else 0.3)
+# his reply on its way: typing, then the streak from the north window to the south
+for k in range(3):
+    ui.add(X.ui_blip(S.hz(["F#6", "A6", "B6"][k]), 1.0), fr(R["typing"]) + k * 0.25, -28, pan=0.5)
+streak = S.whoosh(fr(R["land"]) - fr(R["fly"]) + 0.1, 500, 5200, 1.0, 3570, 0.85)
+fxb.add(pan_sweep(streak, 0.8, -0.6), fr(R["fly"]), -19)
+bells.add(X.shimmer(0.9, ["A6", "B6", "D7", "E7"], (20, 50), 1.0, 3571, 0.3), fr(R["fly"]), -29)
+
+# ======================================================== I · 读懂 → turnaround (48.4–54.5 s)
+LAND = fr(R["land"])
+fxb.add(S.reverse_swell(0.4, 1.0, 3600), LAND - 0.4, -22)
+sfx.add(X.paper_rustle(0.4, 1.0, 3601), LAND, -30)
+gl2 = ["D4", "E4", "F#4", "A4", "B4", "D5", "E5", "F#5", "A5", "B5", "D6"]
+for k, nt in enumerate(gl2):
+    music.add(S.guzheng(nt, 1.4, 1.0, 0.75, seed=3610 + k), LAND - 0.18 + k * 0.02, -26 + k * 0.3, pan=0.5 - k * 0.1)
+# the half he never sent surfaces under the warmth: a string sighs down onto the chord, a bell runs
+# backwards (v2's string fell a semitone, off the key, and loud)
+GH = fr(R["ghost"])
+music.add(S.guzheng("A2", 2.4, 1.0, 0.4, bend=-2, bend_at=0.2, bend_dur=0.5, seed=3630), GH, -23, pan=-0.2)
+rb = S.bell("E5", 1.2, 1.0, seed=3631)[::-1]
+bells.add(rb, GH + 0.6 - len(rb) / SR, -28, pan=-0.3)
+sfx.add(X.paper_rustle(0.6, 1.0, 3632, 400, 2500), GH, -32)
+# 已读懂
+sfx.add(X.stamp(1.0, 3640), fr(R["dong"]), -17, pan=0.35)
+bells.add(S.ding(1.0), fr(R["dong"]) + 0.03, -19, pan=0.35)
+fxb.add(S.whoosh(0.25, 1500, 5000, 1.0, 3641, 0.6), fr(R["bubble"]) - 0.12, -27, pan=-0.2)
+# THE LINK (50.5–56): her reply opens line by line while line 1 rests on its E, and the strings answer each
+# line with a short phrase, climbing — 1 2 3 · 2 3 5 6 · 5 6 1̇ (the pre-chorus's rising line) — the
+# third lands its D on the bar (52.5); then the drums tighten into the lights
+for k, (f, notes) in enumerate(((R["p1"], "D5 E5 F#5"), (R["p2"], "E5 F#5 A5 B5"), (R["p3"], "A5 B5 D6"))):
+    t0 = round(fr(f) * 8) / 8  # onto the sixteenth grid
+    ns = notes.split()
+    for j, nt in enumerate(ns):
+        last = j == len(ns) - 1
+        music.add(S.guzheng(nt, 1.6 if last else 0.6, 1.0, 0.75, t60=1.6 if last else 0.9, seed=3650 + k * 5 + j), t0 + j * STEP, -16 + 0.5 * j, pan=-0.25 + 0.25 * k)
+bells.add(X.shimmer(1.0, ["B6", "A6", "F#6", "E6", "D6"], (30, 8), 1.0, 3710, 0.4), fr(R["p3"]) + 0.3, -29)
+# v4.1 · the peach that becomes her 。 lands on the line on the beat (53.5 s here, 54.0 s in the film):
+# the knock every 。 of the film lands with (南北's at 24.8 s), soft
+sfx.add(S.wood_tick(1.0, 3796), fr(R["p3"] + 39), -24, pan=-0.12)
+# The link, second half (52.5–54.5): G, then A, the drums tightening into the fill; the sheet goes back
+# into his window and the groove of the lights picks up on the bar (54.5)
+CB = 54.5  # the city's first bar
+for t0, bn, pd, sd in ((52.5, "G1", ["G2", "D3", "B3", "E4"], 3780), (53.5, "A1", ["A2", "E3", "C#4", "E4"], 3781)):
+    bass.add(S.bass808(bn, 0.95, 1.0, punch=0.9), t0, -10)
+    music.add(S.pad(pd, 1.05, 1.0, attack=0.15, release=0.4, cutoff=2400, seed=sd), t0, -20)
+# the strings run up in sixteenths through the two chords, a wave over G and a higher one over A, and
+# hand on to the lights' own figure on the bar
+run = "B4 D5 E5 D5 B4 D5 E5 F#5 E5 F#5 A5 F#5 E5 F#5 A5 B5".split()
+for k, nt in enumerate(run if OLD_OSTI else []):  # v5.0: the layer instead
+    music.add(S.guzheng(nt, 0.55, 1.0, 0.8, t60=0.8, seed=3760 + k), 52.5 + k * STEP, -19.5 + k * 0.2 + (1.2 if k % 4 == 0 else 0), pan=-0.35 if k % 2 else 0.35)
+drums.add(S.kick(1.0, 3799), 54.0, -12)
+drums.add(S.kick(1.0, 3791), 52.5, -9)
+for k, t in enumerate((53.0, 53.5)):
+    drums.add(S.kick(1.0, 3792 + k), t, -11)
+drums.add(S.snare(1.0, 3750), 53.0, -15)
+drums.add(S.clap(1.0, 3751), 53.0, -18, pan=0.1)
+for k in range(6):
+    drums.add(S.hat(1.0, False, 3795 + k), 52.75 + k * 0.25, -23 if k % 2 else -25, pan=0.28)
+shaker(52.5, 54.5, -30, 3770, shape=[(52.5, -1.0), (54.5, 1.5)])
+# the last beat before the build into the lights: a snare run, as before the count
+for k in range(4):
+    drums.add(S.snare(1.0, 3640 + k), 52.0 + k * STEP, -23 + k * 2)
+drums.add(S.snare(1.0, 3681), 54.0, -15)
+drums.add(S.tom(1.0, 100, 3682), 54.25, -19, pan=-0.2)
+drums.add(S.tom(1.0, 88, 3683), 54.375, -17, pan=0.1)
+fxb.add(S.reverse_swell(CB - 53.5, 1.0, 3720), 53.5, -17)
+music.add(S.pad(["D3", "A3", "E4"], CB - fr(R["pull"]) + 0.2, 1.0, attack=0.5, release=0.3, cutoff=1500, seed=3721), fr(R["pull"]), -22)
+hum = X.city_hum(11.6, 1.0, 3722)
+amb.add(hum * env_curve(len(hum), [(0, 0.0), (1.4, 1.0), (8.6, 1.0), (11.6, 0.0)]), fr(R["pull"]), -33)
+
+# ======================================================== J · 人间灯火灿于星 (54.5–65.0 s)
+CY = C["city"]
+BEATS = [1665 + k * 15 for k in range(13)]  # 55.5–61.5: a window wakes on every beat
+PK = fr(CY["peak"])  # 60.5
+LT = 1875 / 30  # 62.5 the last thread lands in the dark pavilion window
+DIVE, CEND = fr(CY["dive"]), fr(CY["end"])  # 63.0–65.0
+osti_j = [
+    "D5 A4 B4 D5 E5 F#5 E5 D5 F#5 A5 F#5 E5 D5 E5 F#5 A5",
+    "B4 F#4 A4 B4 D5 E5 D5 B4 D5 F#5 E5 D5 B4 D5 E5 F#5",
+    "B4 D5 E5 D5 B4 A4 B4 D5 E5 F#5 E5 D5 B4 D5 E5 F#5",
+    "D5 F#5 A5 F#5 E5 D5 B4 D5 E5 F#5 A5 B5 A5 F#5 E5 D5",
+]
+groove(CB, "D2", ["D3", "A3", "F#4", "E5"], 3000, osti_j[0], 3800, osti_db=-19)
+groove(CB + 2, "B1", ["B2", "F#3", "D4", "A4"], 3300, osti_j[1], 3900, osti_db=-18, glide="G1")
+groove(CB + 4, "G1", ["G2", "D3", "B3", "F#4"], 3600, osti_j[2], 4000, osti_db=-18)
+groove(CB + 6, "D2", ["D3", "A3", "F#4", "E5", "A5"], 4200, osti_j[3], 4050, osti_db=-17, kick_db=-5)  # the peak's bar
+# 62.5 the last bar: no crash, no snare; the bass climbs from G to A and the drums thin out
+# into the dive, gone by the last beat before the window
+b0 = LT
+for t, db in ((b0, -7), (b0 + 0.75, -10), (b0 + 1.0, -9), (b0 + 1.5, -11)):
+    drums.add(S.kick(1.0, 4100 + int(t * 8)), t, db)
+for s in range(2, 16, 4):
+    drums.add(S.hat(1.0, False, 4110 + s), b0 + s * STEP, -22, pan=0.28)
+for s in range(20):  # the shaker alone carries on to the window, growing with the rise
+    drums.add(S.hat(1.0, False, 4130 + s) * 0.6, b0 + s * STEP + 0.006, -28 + s * 0.3, pan=-0.32)
+bass.add(S.bass808("G1", 1.0, 1.0, punch=0.8), b0, -8)
+bass.add(S.bass808("A1", CEND - (b0 + 1.0), 1.0, punch=0.6), b0 + 1.0, -9)  # v4.0: holds to the window
+music.add(S.pad(["G2", "D3", "B3", "F#4"], 1.0, 1.0, attack=0.2, release=0.4, cutoff=3000, seed=4150), b0, -20)
+music.add(S.pad(["A2", "E3", "B3", "E4"], CEND - (b0 + 1.0), 1.0, attack=0.3, release=0.3, cutoff=2600, seed=4151), b0 + 1.0, -20)
+for s, nt in enumerate("B4 D5 E5 D5 B4 D5 E5 F#5 E5 D5 B4 A4".split() if OLD_OSTI else []):  # v5.0: the layer instead
+    music.add(S.guzheng(nt, 0.7, 1.0, 0.8, t60=1.1, seed=4160 + s), b0 + s * STEP, -20 + (1.5 if s % 4 == 0 else 0), pan=-0.35 if s % 2 else 0.35)
+# a window wakes on every beat; threads of light fly between them
+wake_notes = ["A5", "B5", "D6", "E6", "F#6", "E6", "D6", "E6", "F#6", "A6", "B6", "A6", "F#6"]
+for k, f in enumerate(BEATS):
+    bells.add(S.bell(octave(wake_notes[k], REG), 1.4, 1.0, [(1, 1, 0.6), (2.0, 0.2, 0.25), (3.01, 0.06, 0.2)], seed=4200 + k), fr(f) + 0.1, (-23 if SOFT else -21) + k * 0.25, pan=rnd.uniform(-0.6, 0.6))
+    fxb.add(S.whoosh(0.35, 2500, 9000, 1.0, 4210 + k, 0.8), fr(f) - 0.25, -27, pan=rnd.uniform(-0.5, 0.5))
+    for j in range(3):  # the wave spreading through many windows
+        bells.add(S.bell(octave(["D6", "E6", "F#6", "A6", "B6", "D7"][int(rnd.integers(6))], REG), 0.8, 1.0, [(1, 1, 0.5), (2.0, 0.2, 0.2)], seed=4230 + k * 3 + j), fr(f) + 0.12 + j * 0.06 + rnd.uniform(0, 0.03), -33 if SOFT else -31, pan=rnd.uniform(-0.8, 0.8))
+# CHORUS A, line 2: the lights' line, as v3 sang it (its top rounded off) — line 1's rhythm, an octave
+# higher: up to the peak (60.5) and home on the last thread (62.5)
+# Two dizis an octave apart (B's height and A's warmth of the third version's previews, together): the
+# upper one, rounded off, leads; the lower one, nearly as loud, gives the line its body
+dizi_r([(s, d, octave(n, REG)) for s, d, n in CITY_LINE], 56.0, -12.5, 4300, vib=0.014)
+# Line 2 starts with the lights (54.5): the lower dizi sings the head of the line first, low (1 · 2 1),
+# then goes on with the lights' line an octave below the upper one, which joins at 56.0. So the head
+# climbs: low (54.5), high (56.5), a step higher (58.5), the peak (60.5) — then home (62.5).
+dizi([(54.5, 0.75, "D5"), (55.25, 0.25, "E5"), (55.5, 0.42, "D5")], 54.5, -11.5, 4306, vib=0.014)
+dizi([(s, d, octave(n, -1)) for s, d, n in CITY_LINE], 56.0, -14, 4305, vib=0.012)
+# the peak: for one beat the whole town is woven together
+bells.add(X.shimmer(1.2, ["D6", "E6", "F#6", "A6", "B6", "D7", "E7"], (60, 20), 1.0, 4310, 0.45), PK, -21)
+for nt, db in [("D3", -12), ("A3", -14), ("D4", -15), ("F#4", -17)]:
+    bells.add(S.bell(nt, 3.0, 1.0, seed=4320 + len(nt)), PK, db, pan=rnd.uniform(-0.2, 0.2))
+drums.add(S.taiko(1.0, 4330), PK, -11)
+bass.add(S.bass808("D1", 1.2, 1.0, punch=2.0), PK, -8)
+amb.add(X.wind(4.0, 1.0, 4340, 300, 1400) * np.sin(np.pi * np.linspace(0, 1, S.n_samples(4.0))), PK, -36, pan=0.3)
+# the last thread
+bells.add(S.bell(octave("A6", REG), 2.2, 1.0, [(1, 1, 0.8), (2.0, 0.25, 0.35), (3.01, 0.08, 0.2)], seed=4350), LT, -18 if SOFT else -16, pan=0.2)
+bells.add(S.bell(octave("D6", REG), 2.2, 1.0, seed=4351), LT + 0.02, -21 if SOFT else -19, pan=0.2)
+fxb.add(S.whoosh(0.8, 1200, 8000, 1.0, 4352, 0.85), LT - 0.8, -20, pan=-0.1)
+# the dive: a rise into the window, the strings leading in
+fxb.add(S.riser(CEND - DIVE, 1.0, 4400), DIVE, -10)
+fxb.add(S.whoosh(CEND - DIVE + 0.1, 300, 6000, 1.0, 4401, (64.8 - DIVE) / (CEND - DIVE + 0.1)), DIVE, -12)  # peaks as the window's frame goes past
+music.add(S.guzheng("A5", 1.0, 1.0, 0.7, seed=4402), CEND - 1.0, -18)
+music.add(S.guzheng("B5", 1.0, 1.0, 0.7, seed=4403), CEND - 0.75, -18)
+music.add(S.guzheng("D6", 1.4, 1.0, 0.7, seed=4404), CEND - 0.5, -17)
+
+# ======================================================== K · 片尾 (65.0–70.4 s)
+EN = C["ending"]
+T0 = fr(EN["start"])
+fxb.add(S.reverse_swell(0.25, 1.0, 4500), T0 - 0.25, -18)
+bells.add(S.bell("D5", 3.0, 1.0, [(1, 1, 0.8), (2.0, 0.2, 0.3)], seed=4506), T0 + 0.01, -20, pan=0.1)  # through the window: home
+music.add(S.sine_pad(["D2", "A2"], 2.7, 1.0, attack=0.02, release=1.2), T0, -22)
+# a low floor under the solo, so the room does not go thin after the lights (v3.1, third version)
+bass.add(S.bass808("D1", 2.6, 0.7, punch=0.3, drive=1.0), T0, -19)
+amb.add(X.city_hum(2.0, 1.0, 4501) * np.linspace(1, 0, S.n_samples(2.0)) ** 2, T0, -40)
+amb.add(S.room_tone(DUR - T0 + 0.05, 1.0, 4502), T0, -47)  # v4.0: to the very end (the loop)
+amb.add(S.crickets(5.5, 1.0, 4503), T0 + 0.5, -50, pan=0.5)
+music.add(S.pad(["D3", "A3", "E4", "F#4"], 3.0, 1.0, attack=0.25, release=1.4, cutoff=1300, seed=4510), T0, -19)
+sfx.add(X.paper_rustle(0.6, 1.0, 4520, 1200, 6000), fr(EN["slip"]), -32, pan=0.6)
+sfx.add(X.stamp(1.0, 4521), fr(EN["seal"]), -16, pan=0.55)
+# the guzheng alone: the motif once more, in the room
+solo = [
+    (EN["l1"], "A4", -12), (EN["l1"] + 9, "B4", -13), (EN["l1"] + 18, "D5", -12),
+    (EN["l2"], "E5", -12), (EN["l2"] + 9, "D5", -13), (EN["l2"] + 18, "B4", -13),
+]
+for k, (f, nt, db) in enumerate(solo):
+    music.add(S.guzheng(nt, 2.6, 1.0, 0.55, vib=0.12, seed=4530 + k), fr(f), db, pan=0.05)
+music.add(S.guzheng("A3", 2.6, 1.0, 0.45, seed=4540), fr(EN["l2"]) - 0.02, -20, pan=-0.15)
+bells.add(S.bell("D5", 2.2, 1.0, [(1, 1, 0.7), (2.0, 0.15, 0.3)], seed=4541), fr(EN["l1"]), -27, pan=-0.2)
+# and the dizi of the lights goes on with it, softer, with the guzheng (an octave lower than the
+# second version, which sat high and sharp there) — the refrain's opening once more — home on D
+_l1, _l2, _l3 = fr(EN["l1"]), fr(EN["l2"]), fr(EN["l3"])
+dizi([(_l1, 0.3, "A4"), (_l1 + 0.3, 0.3, "B4"), (_l1 + 0.6, _l2 - _l1 - 0.62, "D5"),
+      (_l2, 0.3, "E5"), (_l2 + 0.3, 0.3, "D5"), (_l2 + 0.6, _l3 - _l2 - 0.62, "B4"), (_l3, 2.05, "D5")], _l1, -12.5, 4590, breath=0.15, vib=0.016, tail=0.8)
+# v5.3: the film's last dizi note dies away like a breath (0.8 s, to 70.28 s, before the page turns to type
+# at 70.3) instead of stopping at 70.13 with its breath noise (用户: "正常人不是气息会逐渐减弱，有一个渐弱的过程吗")
+# 有些心事却一直相通: home
+L3 = fr(EN["l3"])
+for nt, pan, db, dt in [("D2", 0, -13, 0.0), ("A2", -0.2, -16, 0.03), ("F#3", 0.2, -17, 0.06), ("D4", -0.1, -15, 0.09), ("A4", 0.15, -16, 0.12), ("D5", 0.0, -12, 0.15)]:
+    music.add(S.guzheng(nt, 4.0, 1.0, 0.55, vib=0.08, seed=4550 + int(dt * 100)), L3 + dt, db, pan=pan)
+music.add(S.pad(["D3", "A3", "F#4", "E5"], 2.8, 1.0, attack=0.5, release=1.6, cutoff=1500, seed=4560), L3, -21)
+bells.add(X.gong("D3", 4.5, 1.0, 4561), L3, -21)
+drums.add(S.taiko(1.0, 4562), L3, -17)
+bass.add(S.bass808("D1", 2.2, 0.7, punch=0.4, drive=1.0), L3, -15)
+music.add(X.harmonic("D6", 2.4, 1.0, 4563), L3 + 0.8, -25, pan=0.25)
+music.add(X.harmonic("A5", 2.2, 1.0, 4564), fr(EN["sig"]), -27, pan=-0.2)
+# the page becomes type
+for k in range(12):
+    sfx.add(X.type_key(1.0, 4600 + k), fr(EN["morph"]) + 0.06 + k * 0.04 + rnd.uniform(-0.01, 0.01), -24 + rnd.uniform(-2, 1), pan=rnd.uniform(-0.3, 0.3))
+
+# ======================================================== L · the code runs home (70.3–72.3 s)
+CD = C["code"]
+# v4.4: the carriage runs as the listing does (see the top of this file). The listing's speed on screen,
+# px per frame, for each frame from the rewind on (Ending.tsx, camera(): S = lerp(s0, s1, 1 − (1 −
+# smooth(p))^5) over rewind → stop, from the theme's second line to the film's first at 52 px a row, at
+# the listing's scale 1 − 0.08 sin(πp)); the sounds go with log(1 + v/40) of it, relative to its fastest
+# frame. v4.5: s0 and s1 are found in the listing as Ending.tsx finds them (rows(), anchors()).
+def listing_rows():
+    src = json.load(open(os.environ.get("SOURCE_JSON", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "gen", "source.json"))))
+    rows = []
+    for fl in src["files"]:
+        rows.append(("file", fl["path"]))
+        rows += [("code", ln) for ln in fl["lines"]]
+        rows.append(("gap", ""))
+    return rows
+
+
+def code_speed():
+    R = listing_rows()
+    s1 = next(i for i, (k, t) in enumerate(R) if k == "code" and '"掂量情思敲字句，轻顿指尖"' in t)
+    s0 = max(i for i, (k, t) in enumerate(R) if '"方式一直在变，"' in t)
+    rw, st = CUES_NEW["code"]["rewind"], CUES_NEW["code"]["stop"]
+    sm = lambda u: u * u * (3 - 2 * u)
+    p = lambda f: min(1.0, max(0.0, (f - rw) / (st - rw)))
+    S_ = lambda f: s0 + (s1 - s0) * (1 - (1 - sm(p(f))) ** 5)
+    Z_ = lambda f: 1 - 0.08 * np.sin(np.pi * p(f))
+    v = [abs(S_(rw + i) - S_(rw + i - 1)) * 52 * Z_(rw + i) for i in range(st - rw + 1)]
+    print("listing: from row %d to row %d; fastest %.0f px/frame" % (s0, s1, max(v)))
+    return v
+
+
+CODE_V = code_speed()
+
+
+def code_run(vs):
+    """(w, p, dur): the listing's speed as 0..1 (log), and how far it has come (0..1), as functions of
+    the time since the rewind; dur = from the rewind to the stop"""
+    vs = np.asarray(vs, float)
+    tf = np.arange(len(vs)) / FPS
+    w = np.log1p(vs / 40) / np.log1p(vs.max() / 40)
+    p = np.cumsum(vs) / vs.sum()
+    return (lambda t: np.interp(t, tf, w)), (lambda t: np.interp(t, tf, p)), tf[-1]
+
+
+def carriage_run(W, dur, vel=1.0, seed=0):
+    """The ratchet of a carriage running back (sfx2.carriage_return), its clicks' rate and loudness and
+    its slide going with W, the speed of the run"""
+    r = np.random.default_rng(seed)
+    n = S.n_samples(dur)
+    y = np.zeros(n)
+    tt, k = 0.0, 0
+    while tt < dur:
+        ww = float(W(tt))
+        if ww < 0.02:
+            tt += 1.0 / 240
+            continue
+        c = S.modal([1900 * r.uniform(0.92, 1.08), 3900], [0.008, 0.005], [1, 0.4], 0.03, 1.0, 9000 + seed * 50 + k, 0.4)
+        i = S.n_samples(tt)
+        m = min(len(c), n - i)
+        y[i:i + m] += c[:m] * (0.3 + 0.7 * ww)
+        tt += 1.0 / (12 + 75 * ww)
+        k += 1
+    slide = S.shaped_noise(dur, lambda u: 900 + 1900 * float(W(u * dur)), 1.1, lambda u: W(u * dur) ** 1.3, seed + 3) * 0.6
+    return S.norm(y + slide, vel)
+
+
+_W, _P, _cd = code_run(CODE_V)
+sfx.add(carriage_run(_W, _cd, 1.0, 4700), fr(CD["rewind"]), -15, pan=-0.1)
+# the whoosh falls from 5000 to 500 Hz as the listing comes home, as loud as it is fast
+fxb.add(S.shaped_noise(_cd, lambda u: 5000 * 0.1 ** float(_P(u * _cd)), 1.4, lambda u: _W(u * _cd) ** 1.5, 4701), fr(CD["rewind"]), -21)
+# v4.5: on the frame the cursor first shows before 掂 (the listing's blink is off on the stop itself)
+sfx.add(S.wood_knock(1.0, 4702), fr(CD["stop"] + 1), -14)
+bells.add(X.ty_bell(1.0, 4703), fr(CD["stop"] + 1) + 0.01, -13, pan=0.2)
+music.add(X.harmonic("D6", 0.8, 1.0, 4704), fr(CD["stop"] + 1) + 0.02, -26)
+
+# ======================================================== M · 字回字盘, the loop (72.83–74.33 s)
+# v4.5: the line lies down out of the page onto the opening's input strip (72.83–73.23 s): a soft slide
+# of paper as the page goes, and a pat as the line lies flat. Then its characters go home into the type
+# one by one, the last first (scenes/typing, LOOP), each with a small wooden click as it drops into its
+# cell — at the very moment it lands (the cue sheet's lands, between frames), slowing from 33 to 60 ms
+# apart, high to low as the line empties toward the cursor, each panned where it lands on screen. The
+# cursor makes no sound: it lies down with the line and waits. The crickets of the opening come up to
+# their level (−46 dB on the left), so that the end runs on into the beginning.
+LP = C["loop"]
+LPN = CUES_NEW["loop"]
+
+
+def lay_pat(seed):
+    """paper laid flat on paper: a short soft pat, a little low thump under it"""
+    r = np.random.default_rng(seed)
+    n = S.n_samples(0.2)
+    t = S.t_axis(n)
+    pat = S.bp(r.standard_normal(n), 300, 2400) * np.exp(-t / 0.016)
+    low = np.sin(2 * np.pi * 110 * t) * np.exp(-t / 0.04) * 0.7
+    return S.fade(S.norm(pat + low, 1.0), 0.0015, 0.02)
+
+
+def sort_click(f0, seed):
+    """a small wooden sort dropping into its cell of the case: a short bright knock over a little body"""
+    a = S.modal([f0, f0 * 1.58, f0 * 2.41], [0.014, 0.009, 0.006], [1, 0.5, 0.25], 0.1, 1.0, seed, 0.3)
+    t = S.t_axis(len(a))
+    body = np.sin(2 * np.pi * f0 * 0.31 * t) * np.exp(-t / 0.018) * 0.4
+    return S.fade(S.norm(a + body, 1.0), 0.0005, 0.02)
+
+
+def landing_x():
+    """where on screen each character lands (x, px): its home cell (typing.ts, LOOP_HOME, read from the
+    listing) through the room's camera at that moment (loopCam: wide, coming back to rest)"""
+    import re
+    src = json.load(open(os.environ.get("SOURCE_JSON", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "gen", "source.json"))))
+    lines = next(fl["lines"] for fl in src["files"] if fl["path"].endswith("scenes/typing.ts"))
+    i = next(k for k, ln in enumerate(lines) if ln.startswith("export const LOOP_HOME"))
+    home = [(int(c), int(r)) for c, r in re.findall(r"\[(-?\d+), (-?\d+)\]", lines[i + 1])]
+    assert len(home) == 12, home
+    lerp = lambda a, b, u: a + (b - a) * u
+    eio = lambda u: 4 * u ** 3 if u < 0.5 else 1 - (-2 * u + 2) ** 3 / 2
+    E, go, hm = LPN["end"], LPN["go"], LPN["home"]
+    F = 540 / np.tan(np.radians(15))
+    xs = []
+    for k, (c, r) in enumerate(home):
+        w = 1 - eio(min(1.0, max(0.0, (LPN["lands"][k] - go) / (hm - go))))
+        pos = np.array([lerp(-3.4, 0.65, w), lerp(7.4, 9.4, w), lerp(10.6, 14.4, w)])
+        look = np.array([lerp(-3.4, 0.65, w), 0.0, lerp(1.0, 0.75, w)])
+        fw = (look - pos) / np.linalg.norm(look - pos)
+        rt = np.cross(fw, [0, 1, 0])
+        rt /= np.linalg.norm(rt)
+        d = np.array([c + 0.5, 0.0, r + 0.5]) - pos
+        xs.append(960 + F * (d @ rt) / (d @ fw))
+    return xs
+
+
+sfx.add(S.shaped_noise(fr(LP["laid"]) - fr(LP["start"] + 1) + 0.02, lambda u: 3200 * 0.4 ** u, 1.3, lambda u: np.sin(0.5 * np.pi * np.minimum(1.0, u * 1.05)) ** 2, 4810), fr(LP["start"] + 1), -32, pan=-0.1)
+sfx.add(lay_pat(4811), fr(LP["laid"]), -26, pan=-0.05)
+_lx = landing_x()
+for n, k in enumerate(sorted(range(12), key=lambda k: LPN["lands"][k])):  # in the order they land: 尖 … 掂
+    pan = float(np.clip((_lx[k] - 960) / 960, -1, 1)) * 0.6
+    sfx.add(sort_click(2350 * 0.72 ** (n / 11) * rnd.uniform(0.98, 1.02), 4820 + n), fr(LP["lands"][k]), -27 - 4 * n / 11 + rnd.uniform(-0.8, 0.4), pan=pan)
+print("loop: lands at %s s, panned %s" % ([round(LPN["lands"][k] / 30, 3) for k in range(12)], [round(float(np.clip((x - 960) / 960, -1, 1)) * 0.6, 2) for x in _lx]))
+_ck = S.crickets(DUR - 70.6 + 0.05, 1.0, 7)
+amb.add(_ck * np.minimum(1.0, np.linspace(0, 1, len(_ck)) * 2.5)[:, None] if _ck.ndim == 2 else _ck * np.minimum(1.0, np.linspace(0, 1, len(_ck)) * 2.5), 70.6, -46, pan=-0.35)
+
+# ======================================================== K · v5.0: the kit and the guzheng layer
+# The user (2026-10-23): the drums "一会强一会弱" — in most music the drums keep the time; within a section,
+# or wherever the music is regular, one strength. And the guzheng figure stood out alone for its first
+# half bar (9.0–9.5) and then seemed to vanish under the dizi: it should be a layer that is there all
+# through the sections it plays in, regular, always just audible.
+# So the drum parts written into each section above are dropped from 9.0 s on (KeepBus keeps the title's
+# and the count's) and the kit is written out here, in film time, one pattern a section:
+#   full:  kick on one and three, snare and clap on two and four, hats in eighths — 一线, 往事 → 月, the chorus
+#   light: the same, softer, the clap alone on two and four — 已送达 → 南北 → 更漏
+# a crash (and the taiko under it) only where a section starts; the deliberate breaks stay: the drop that
+# never comes (31.5–32.5), the moon coming whole (39.5–40.5), the count (43.5–45.0); the pre-chorus is one
+# pattern with a kick on every beat and a snare run into the count; the link one beat of snare into the
+# lights. The word-painting drums are gone (the toms on 一线 山南 海北 and 抵年年 fell every third of a second,
+# off the beat; the taiko on the burst, on 春, on the record's stop, on the light at his window).
+# The guzheng layer is the groove's figure (FIG: the first half-bar of 一线's) on each bar's chord, one
+# level throughout (−19 dB, a little more on the beat), panned wide (±0.6) away from the dizi in the
+# middle: sixteenths with the full kit, eighths with the light one.
+WARP = 0.0
+def kit_bar(b0, beats=4, kind="full", seed=0, crash=False):
+    full = kind == "full"
+    if crash:
+        kit.add(S.crash(1.0, seed + 90, 2.0), b0, -13, pan=-0.3)
+        kit.add(S.taiko(1.0, seed + 91), b0, -11)
+    for k in range(beats):
+        t = b0 + 0.5 * k
+        if k % 2 == 0:
+            kit.add(S.kick(1.0, seed + k), t, (-7 if k == 0 else -8) if full else -14)
+        else:
+            if full:
+                kit.add(S.snare(1.0, seed + 10 + k), t, -11)
+            kit.add(S.clap(1.0, seed + 20 + k), t, -15 if full else -24, pan=0.1)
+        for h in range(2):
+            kit.add(S.hat(1.0, False, seed + 30 + 2 * k + h), t + 0.25 * h, (-21 if h == 0 else -24) if full else (-28 if h == 0 else -30), pan=0.28)
+# 一线 (9–17): full
+for j, b0 in enumerate((9.0, 11.0, 13.0, 15.0)):
+    kit_bar(b0, 4, "full", 7000 + 100 * j, crash=j == 0)
+# 已送达 · 雀跃 · 南北 · 更漏 (17–31.5): light; 25.0–27.5 is the five-beat bar
+for j, b0 in enumerate((17.0, 19.0, 21.0, 23.0)):
+    kit_bar(b0, 4, "light", 7500 + 100 * j)
+kit_bar(25.0, 5, "light", 7900)
+for j, b0 in enumerate((27.5, 29.5)):
+    kit_bar(b0, 4, "light", 8000 + 100 * j)
+# 31.5 the drop that never comes: nothing for two beats; the kit comes in with the record on beat three
+kit.add(S.crash(1.0, 8290, 2.0), 32.5, -13, pan=-0.3)
+kit.add(S.taiko(1.0, 8291), 32.5, -11)
+kit_bar(32.5, 2, "full", 8200)
+# 往事 → 月 (33.5–39.5): full, every bar alike (v4.5 lightened the bar at 35.5)
+for j, b0 in enumerate((33.5, 35.5, 37.5)):
+    kit_bar(b0, 4, "full", 8300 + 100 * j)
+# 39.5 the moon comes whole: one kick, a breath
+kit.add(S.kick(1.0, 8600), 39.5, -9)
+kit.add(S.hat(1.0, False, 8601), 40.0, -25, pan=0.3)
+# the pre-chorus (40.5–43.5): one pattern — a kick on every beat, snare and clap on two and four, hats in
+# eighths — then a snare run into the count
+kit.add(S.crash(1.0, 8690, 2.2), 40.5, -12, pan=0.2)
+kit.add(S.taiko(1.0, 8691), 40.5, -10)
+for k in range(6):
+    t = 40.5 + 0.5 * k
+    kit.add(S.kick(1.0, 8700 + k), t, -9)
+    if t in (41.0, 42.0):
+        kit.add(S.snare(1.0, 8710 + k), t, -12)
+        kit.add(S.clap(1.0, 8720 + k), t, -16, pan=0.1)
+    for h in range(2):
+        kit.add(S.hat(1.0, False, 8730 + 2 * k + h), t + 0.25 * h, -22 if h == 0 else -24, pan=0.28)
+for k in range(4):
+    kit.add(S.snare(1.0, 8760 + k), 43.0 + k * STEP, -18 + k * 1.5)
+# the chorus (45.0–63.0): full; a crash on 子正 and on the lights; one beat of snare into the lights
+for j, b0 in enumerate((45.0, 47.0, 49.0, 51.0, 53.0, 55.0, 57.0, 59.0, 61.0)):
+    if b0 == 53.0:
+        kit_bar(b0, 3, "full", 9000 + 100 * j)
+        for k in range(4):
+            kit.add(S.snare(1.0, 9400 + k), 54.5 + k * STEP, -17 + k * 1.5)
+        kit.add(S.kick(1.0, 9410), 54.5, -8)
+    else:
+        kit_bar(b0, 4, "full", 9000 + 100 * j, crash=b0 in (45.0, 55.0))
+# the last bar, into the dive (63.0–65.0): light; then the window
+kit_bar(63.0, 4, "light", 9900)
+# the guzheng layer
+LAYER_DB = -19
+loop(9.0, 17.0, [(9.0, "D"), (11.0, "Bm"), (13.0, "A"), (15.0, "D")], LAYER_DB, 10000, every=1, pan=0.6)
+loop(17.0, 25.0, [(17.0, "D"), (19.0, "Bm"), (21.0, "G"), (23.0, "Bm"), (24.0, "A")], LAYER_DB, 10200, every=2, pan=0.6)
+WARP = GAP / FPS  # (from here in the score's own time: the film's minus one beat)
+loop(32.0, 39.0, [(32.0, "D"), (33.0, "Bm"), (35.0, "A"), (37.0, "D")], LAYER_DB, 10400, every=1, pan=0.6)
+loop(44.5, 62.5, [(44.5, "D"), (46.5, "Bm"), (48.5, "G"), (50.5, "D"), (52.5, "G"), (53.5, "A"), (54.5, "D"), (56.5, "Bm"), (58.5, "G"), (60.5, "D")], LAYER_DB, 10600, every=1, pan=0.6)
+loop(62.5, 64.5, [(62.5, "G"), (63.5, "A")], LAYER_DB, 11000, every=2, pan=0.6)
+
+# ======================================================== mix
+# Nothing stops for a sound effect any more (v3 dropped the drums and bass for a beat at 14.75 and
+# before 子正). Instead the tune, the harmony, the loop and the low end step aside a little while an
+# effect sounds: up to 3.5 dB, in 10 ms, back over 250 ms. The drums and bells keep the pulse.
+key = np.abs(sfx.x).sum(axis=1) + np.abs(fxb.x).sum(axis=1)
+hop = 48  # the side chain runs at 1 kHz
+w = 20
+e = np.sqrt(np.convolve(key[::hop] ** 2, np.ones(w) / w, mode="same"))
+ref = np.percentile(e[e > 1e-7], 99)
+gr = np.clip((20 * np.log10(e / ref + 1e-9) + 18.0) * 0.25, 0.0, 3.5)
+a_att, a_rel = np.exp(-1.0 / (0.010 * SR / hop)), np.exp(-1.0 / (0.25 * SR / hop))
+sm = np.empty_like(gr)
+v = 0.0
+for i, x in enumerate(gr):
+    v = a_att * v + (1 - a_att) * x if x > v else a_rel * v + (1 - a_rel) * x
+    sm[i] = v
+duck = 10 ** (-np.interp(np.arange(key.shape[0]), np.arange(len(sm)) * hop, sm) / 20)
+for bsx, k in ((music, 1.0), (loopb, 1.0), (bass, 0.6)):
+    bsx.x *= (duck ** k)[:, None]
+# the dizi steps aside as before up to the count, and not at all from 子正 on (sixth version: "the sound
+# effects must not interrupt the tune")
+_tl = np.arange(key.shape[0]) / SR
+lead.x *= np.where(_tl < 43.9 + WARP, duck, 1.0)[:, None]
+print("side chain: max %.1f dB, mean %.2f dB" % (sm.max(), sm.mean()))
+_tt = np.arange(amb.x.shape[0]) / SR
+_tail = np.clip((DUR - 0.03 - _tt) / 0.45, 0, 1) ** 1.5
+for b in (ui, drums, kit, bass, music, lead, bells, fxb, loopb):
+    b.x *= _tail[:, None]
+# (sfx keeps the type falling back into its case right to the seam)
+buses = [amb, sfx, ui, drums, kit, bass, music, lead, bells, fxb, loopb]
+dry = sum(b.x for b in buses)
+send = sum(b.x * b.send for b in buses)
+hall = S.make_ir(2.6, 3, 5200)
+wet = S.convolve_stereo(send, hall)[: dry.shape[0]]
+mix = dry + wet * 0.9
+n = S.n_samples(DUR)
+mix = mix[:n]
+t = S.t_axis(n)
+# v4.0: the film loops. Only the last 20 ms close (and the first 20 ms open), so no click at the seam;
+# what still rings at the end (the code's bell) has been let down over its last 0.4 s by the bus fade
+# above, while the room and the crickets carry on at the opening's level
+mix *= np.clip((DUR - t) / 0.02, 0, 1)[:, None]
+mix *= np.clip(t / 0.02, 0, 1)[:, None]
+scale = 0.89 / (np.max(np.abs(mix)) + 1e-9)
+mix *= scale
+if os.environ.get("STEMS"):  # per-bus stems (dry, same scale) for checking the balance and the continuity
+    for name, b in zip(["amb", "sfx", "ui", "drums", "kit", "bass", "music", "lead", "bells", "fxb", "loop"], buses):
+        wavfile.write(os.path.join(os.environ["STEMS"], name + ".wav"), SR, np.clip(b.x[:n] * scale * 32767, -32768, 32767).astype(np.int16))
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+wavfile.write(OUT, SR, (mix * 32767).astype(np.int16))
+print("wrote", OUT, mix.shape[0] / SR, "s")

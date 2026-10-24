@@ -298,18 +298,22 @@ function ridgeLayer() {
   // at the horizon (2026-10-23: it stopped 65 px short of the right edge for no reason of its own; the
   // user: "如果没有绝对的理由，还是让它直接延伸到最边缘吧")
   const end = { x: CW + 1, y: RL.yH - 1 };
+  // the beacon's fire sits 3 px above the peak so that it rests on it; the thread leaves from the fire's
+  // centre, under the dot (until 2026-10-23 it left from the peak itself, 3 px below the centre, and came
+  // out of the dot's lower half)
+  const fire = { x: beacon.x, y: beacon.y - 3 };
   ctx.strokeStyle = COLORS.vermilionHot;
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i <= 200; i++) {
     const t = i / 200;
-    const x = beacon.x + (end.x - beacon.x) * t, y = beacon.y + (end.y - beacon.y) * t + 38 * Math.sin(Math.PI * t);
+    const x = fire.x + (end.x - fire.x) * t, y = fire.y + (end.y - fire.y) * t + 38 * Math.sin(Math.PI * t);
     i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   }
   ctx.stroke();
   ctx.fillStyle = COLORS.vermilionHot;
   ctx.beginPath();
-  ctx.arc(beacon.x, beacon.y - 3, 6, 0, Math.PI * 2);
+  ctx.arc(fire.x, fire.y, 6, 0, Math.PI * 2);
   ctx.fill();
   // the title: lit, crossed by the sky's own lines
   const t = setLine(TITLE, T.size, T.track, T.inkTop, () => "#fff");

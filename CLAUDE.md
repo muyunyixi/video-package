@@ -6,7 +6,7 @@
 
 ## 一、这是什么
 
-- 用户（署名 muyun）和 Claude 一起做的短片。已经做完的是《字与心事》：一部用代码生成的诗词短片，诗是桃子的；画面、动效、排字、声音全部由代码生成（Remotion 组织时间线，three.js 画场景，React 叠文字层，Python 合成声音），除字体外不用任何图片、视频、音频素材，也不用视频模型。v5.1（74.3 秒，2026-10-23）。
+- 用户（署名 muyun）和 Claude 一起做的短片。已经做完的是《字与心事》：一部用代码生成的诗词短片，诗是桃子的；画面、动效、排字、声音全部由代码生成（Remotion 组织时间线，three.js 画场景，React 叠文字层，Python 合成声音），除字体外不用任何图片、视频、音频素材，也不用视频模型。v5.4（74.3 秒，2026-10-24）。
 - 以后的片子可能很不一样：也许还和国风有关，但形式可以完全不同，比如河图的音乐 MV。做法按那部片子的目标重新选，不必照《字与心事》来。
 - 两处存放，目录一一对应：
 
@@ -62,7 +62,7 @@
 | 《字与心事_项目文档》 | 只看目录和一两节的写法，当作新片项目文档的样子；不读全文 |
 | 《字与心事》的《版本迭代与需求变更记录》 | 不读。要看写法，只看开头的“总览”表和最新一条的前几行（这份有十七万字节，旧条目是历史） |
 | `字与心事/README.md` | 要复用代码时读：环境、目录、从代码到成片的步骤 |
-| 代码 | 用到哪个模块读哪个（第六节）。`vendor/`（第三方源码）、`src/gen/`（生成的数据）、`audio/score_v3*.py`、`score_v4[0-5].py`（旧版总谱）和 `audio/listing_v45.json`（数据）不读 |
+| 代码 | 用到哪个模块读哪个（第六节）。`vendor/`（第三方源码）、`src/gen/`（生成的数据）、`audio/score_v3*.py`、`score_v4[0-5].py`、`score_v50.py`、`score_v53.py`（旧版总谱）和 `audio/listing_v45.json`（数据）不读 |
 
 找东西用搜索：项目里用 project_search，仓库里用 grep，按关键词查到再读那一段。
 
@@ -77,7 +77,7 @@
 ## 五、工作上的约定
 
 - 版本记录只记要改的内容（要改的需求、交付的东西、改了什么）；用户的提问、解释、核实后不改的，不记（指南第九节）。
-- 交付只发成片（H.265 单文件版；用户要上传平台时再发高清版的分卷，高清版就是上传平台用的版本，按平台建议的码率压，见指南第六节）；项目里的文档在交付前更新好，与成片一致；成片、封面图发给用户，由用户自己保存，不用提醒用户上传（指南第五节）。
+- 交付只发成片（H.265 单文件版；用户要上传平台时再发高清版的分卷，高清版就是上传平台用的版本，码率按片子的实际需要定、参照平台建议、不过度溢出，不定死数值，见指南第六节）；项目里的文档在交付前更新好，与成片一致；成片、封面图发给用户，由用户自己保存，不用提醒用户上传（指南第五节）。
 - GitHub：
   - 每发一个版本（版本号变了）提交、推送一次，预览、草图不推；本说明写错、过时的，改完就推；
   - 提交首行写成“<片名或公共>：vX.Y 做了什么”，不超过 25 个字；
@@ -96,8 +96,8 @@
 | `src/lib/ink.ts`、`render/hw_metrics.py`（生成 `src/gen/hw_metrics.json`） | 网格排：字形尺寸从字体文件读；lineInk、cellOf、penInCell |
 | `src/lib/glyph.ts`、`src/lib/textures.ts` | canvas 里写字、三维场景里的单字贴图，同一套排字规则 |
 | `src/lib/paint.ts`、`seep.tsx`、`post.ts`、`sdf.ts`、`ThreeLayer.tsx` | 墨渗、后期、three.js 图层 |
-| `render/build.mjs`、`build_v51.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v51.sh`、`link_v51.sh`、`encode_v51.sh`、`verify_final.py`、`verify_seam.py` | 打包（build_v51：片尾透出的源码固定用 v4.5 那份）、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v51 + link_v51）、编码（encode_v51：两版都换成 BT.709 并标全；高清版即平台上传版，平均 12 Mbps（maxrate 16M、缓冲 16M；不把每秒卡在 16 Mbps 以内，那样首尾接缝会跳）；单文件版接缝前后压得细）、交付前的检查（含颜色标记、码率峰值、解码后的首尾接缝） |
-| `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v50.py` | 乐器与音效合成、母带；总谱的写法（节奏组的写法见 `score_v50.py` 末尾的 K 段） |
+| `render/build.mjs`、`build_v51.mjs`、`render.mjs`、`queue_v44.sh`、`chain_v52.sh`、`link_v52.sh`、`encode_v51.sh`、`verify_final.py`、`verify_seam.py` | 打包（build_v51：片尾透出的源码固定用 v4.5 那份）、逐帧渲染（可续渲；只重渲改动碰到的帧再和上一版拼起来：chain_v52 + link_v52）、编码（encode_v51：两版都换成 BT.709 并标全；高清版即平台上传版，《字与心事》取平均 12 Mbps 的可变码率（maxrate 16M、缓冲 16M；不把每秒卡在 16 Mbps 以内，那样首尾接缝会跳）；单文件版接缝前后压得细）、交付前的检查（含颜色标记、码率峰值、解码后的首尾接缝） |
+| `audio/synth.py`、`sfx2.py`、`master.sh`、`score_v54.py` | 乐器与音效合成（笛子一句的末音用 `flute_line` 的 `tail` 渐弱收住）、母带；总谱的写法（节奏组的写法见总谱末尾的 K 段） |
 | `cover/kit.ts`、`cover/lines2.tsx`、`cover/measure_shannan.py`；`cover/lines.tsx`、`cover/measure_ripple.py` | 线画封面（「山南海北」：线要互相遮挡的画法；「涟漪」：逐像素按线的距离画）；在导出的图上量字和线 |
 | `tools/gridtype.py`、`analysis/grid_v45.py` | 排字工具（出 SVG、PNG）；在成片上量网格排 |
 
