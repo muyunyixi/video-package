@@ -548,13 +548,44 @@ function beiCap(ctx: C, xa: number, xb: number, y: number, th: number, p: BeiPal
   ctx.fillRect(xa - o * 0.4, y - th * 0.15, xb - xa + o * 0.8, th * 0.45);
   ctx.fillStyle = rgb(mixc(p.tileLit, p.snow, 0.4));
   for (let x = xa - o + 2; x < xb + o - 1; x += 4) ctx.fillRect(x, y + th - 1.2, 1.2, 1.2);
-  ctx.fillStyle = rgb(p.snow);
-  ctx.fillRect(xa - o * 0.4, y - th * 0.15 - snow + 0.5, xb - xa + o * 0.8, snow);
+  // v5.7: the snow as on the roofs (ridgeSnow), not a flat strip
+  ridgeSnow(ctx, xa - o * 0.4, xb + o * 0.4, y - th * 0.15 + 0.5, snow, p, xa);
   const sh = ctx.createLinearGradient(0, y + th, 0, y + th * 1.6);
   sh.addColorStop(0, "rgba(8,10,16,0.35)");
   sh.addColorStop(1, "rgba(8,10,16,0)");
   ctx.fillStyle = sh;
   ctx.fillRect(xa - o, y + th, xb - xa + 2 * o, th * 0.6);
+}
+
+/** v5.7 · which ends the north's ridges have (drafts): "soft" a short lift with snow on it, "none" plain ends */
+const NORTH_TAILS = "soft" as "soft" | "none";
+/** old snow along a ridge's top edge (y), xa…xb: thickest (cap) in the middle of the run, thinning to the ends,
+ *  its top a little uneven, lit along the top and greyer below, its underside fading into the slope's snow.
+ *  Its own random numbers (seeded by where it is), so the rest of the street draws as before */
+function ridgeSnow(ctx: C, xa: number, xb: number, y: number, cap: number, p: BeiPal, seed: number) {
+  const r = mulberry32(9000 + Math.round(seed));
+  const n = Math.max(2, Math.round((xb - xa) / 7));
+  const bumps = Array.from({ length: n + 1 }, () => (r() - 0.5) * 0.7);
+  const th = (x: number) => {
+    const u = (x - xa) / (xb - xa), k = u * n, i = Math.min(n - 1, Math.floor(k)), f = k - i;
+    const b = bumps[i] * (1 - f) + bumps[i + 1] * f;
+    return Math.max(0.6, cap * (0.4 + 0.6 * Math.pow(Math.sin(Math.PI * u), 0.3)) + b);
+  };
+  const g = ctx.createLinearGradient(0, y - cap - 0.5, 0, y + 0.5);
+  g.addColorStop(0, rgb(p.snow));
+  g.addColorStop(1, rgb(mixc(p.snow, p.snowShade, 0.45)));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(xa, y + 0.5);
+  for (let x = xa; x <= xb; x += 1) ctx.lineTo(x, y - th(x));
+  ctx.lineTo(xb, y + 0.5);
+  ctx.closePath();
+  ctx.fill();
+  const s = ctx.createLinearGradient(0, y, 0, y + 3);
+  s.addColorStop(0, rgb(mixc(p.snow, p.snowShade, 0.5), 0.55));
+  s.addColorStop(1, rgb(p.snowShade, 0));
+  ctx.fillStyle = s;
+  ctx.fillRect(xa, y, xb - xa, 3);
 }
 
 /** a row of round tiles under snow, seen from the front: eave at eaveY, ridge at ridgeY; the ridge
@@ -633,22 +664,38 @@ function beiRoof(ctx: C, x0: number, x1: number, ridgeY: number, eaveY: number, 
   if (rh <= 0) {
     // v5.5 second draft: one layer, as the south's caps (the user: "右边的边缘有两层，看上去好像偏下了一点"):
     // no ridge band over the slope; the snow runs up to its top edge, and the ends of that edge lift
-    if (o.tails !== false)
+    // v5.7: the ends and the snow (the user: "右边这个房子上面的两个角为什么如此突兀，而且那道雪像是一个长方形直接放在了
+    // 上面，没有过渡"). Until v5.6 the ends were two near-black hooks 8 px high (the tile's darkest colour) standing
+    // on their own beside a lit, snowy roof, and the snow a flat 2.5 px rectangle with square ends and a hard edge
+    if (o.tails !== false && NORTH_TAILS === "soft")
       for (const [sd, xe] of [[-1, x0 + 2], [1, x1 - 2]] as [number, number][]) {
-        ctx.fillStyle = rgb(p.tile);
+        // the ridge's top edge running on and lifting a little past the end (4.5 px), wholly above the top
+        // edge, so the roof's corners stay square; its root the colour of the snowy tile it grows from,
+        // darkening only towards the tip (the user, on the first draft: "和屋面衔接的地方，黑色需要再减轻，不要看上去
+        // 屋面的两边好像往下斜了一块……让这个角自然的从屋面上向两边延伸")
+        const tg = ctx.createLinearGradient(xe - sd * 6, 0, xe + sd * 4.8, 0);
+        // (second draft: its own dark shows towards the tip — the user: "翘角本身的黑色没必要完全被雪覆盖，可以稍微露出
+        // 一点点呀，只是和屋面衔接的部分，不要露出太多黑色")
+        tg.addColorStop(0, rgb(mixc(p.snow, p.tile, 0.3)));
+        tg.addColorStop(0.45, rgb(mixc(p.tile, p.tileLit, 0.7)));
+        tg.addColorStop(1, rgb(p.tile));
+        ctx.fillStyle = tg;
         ctx.beginPath();
-        ctx.moveTo(xe - sd * 12, ridgeY - 1);
-        ctx.quadraticCurveTo(xe + sd * 2, ridgeY - 1, xe + sd * 5, ridgeY - 8);
-        ctx.lineTo(xe + sd * 7, ridgeY - 6.5);
-        ctx.quadraticCurveTo(xe + sd * 5, ridgeY + 2, xe - sd * 2, ridgeY + 4);
+        ctx.moveTo(xe - sd * 6, ridgeY + 0.5);
+        // 5 px, its tip blunt (the user: "要保证左右翘角的高度一致，然后也不要特别特别尖……只用增加到5PX就行了")
+        ctx.quadraticCurveTo(xe + sd * 1.5, ridgeY + 0.5, xe + sd * 4, ridgeY - 5);
+        ctx.quadraticCurveTo(xe + sd * 5.2, ridgeY - 5.2, xe + sd * 5.6, ridgeY - 3.8);
+        ctx.quadraticCurveTo(xe + sd * 2.5, ridgeY + 0.5, xe - sd * 1, ridgeY + 0.5);
         ctx.closePath();
         ctx.fill();
+        ctx.strokeStyle = rgb(p.snow, 0.85);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(xe - sd * 6, ridgeY - 0.6);
+        ctx.quadraticCurveTo(xe + sd * 1, ridgeY - 0.6, xe + sd * 2.4, ridgeY - 2.2); // the snow stops short of the tip
+        ctx.stroke();
       }
-    // a thin line of old snow lying along the top edge, over it (third draft: 4 px, whiter, uneven — the
-    // user: "积雪不要搞这么粗吧？积雪我觉得上一版的感觉就还可以": back to the second draft's line)
-    const cap = o.cap ?? 2.5;
-    ctx.fillStyle = rgb(p.snow);
-    ctx.fillRect(x0 + 2, ridgeY - cap, x1 - x0 - 4, cap + 0.5);
+    ridgeSnow(ctx, x0 + 2, x1 - 2, ridgeY, o.cap ?? 2.5, p, x0);
     return;
   }
   // the main ridge (正脊): a band of tile, snow lying along it, its ends lifting
