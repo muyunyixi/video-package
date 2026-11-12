@@ -1,6 +1,6 @@
 """按内容算出每个字、横线、高亮底块、小黄标在 1440×1920 上的位置。
 
-水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（15 汉字 +“。”）居中后的左格（93.34 px）；正文与署名各自水平居中。
+水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；正文与署名各自水平居中。
 纵向：按稿定设计的文本框叠放（字号×行距），整组垂直居中，再加实测校准。
 """
 
@@ -148,7 +148,7 @@ def build(cfg, font, marks_override=None):
     v = vertical(font, tpl, n)
 
     # 水平（v1.4）：先按网格排好每行；再按“汉字取字格外缘、标点取墨迹”的两端边界在画布中线居中；
-    # 主左轴 x0 固定为七言 16 字标准行（15 汉字 + “。”）居中后的左格（93.34 px），主标题、横线、副标题位置恒定。
+    # 主左轴 x0 固定为七言 16 字标准行（14 汉字 + “，” + “。”）居中后的左格（93.34 px），主标题、横线、副标题位置恒定。
     body_size = tpl["body"][0] * S
     widths = [cells(font, t, body_size)[1] if t else 0.0 for t in texts]
     wmax = max(widths)
@@ -161,7 +161,7 @@ def build(cfg, font, marks_override=None):
         starts = [cx - (L + R) / 2] * n
     else:                                          # 宋词：每行各自居中
         starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
-    std_l, std_r = edges(font, "一" * 15 + "。", body_size)
+    std_l, std_r = edges(font, "一" * 7 + "，" + "一" * 7 + "。", body_size)
     x0 = cx - (std_l + std_r) / 2
 
     lay = dict(mode=tpl["name"], tpl=tpl, bg=tpl["bg"], x0=x0, wmax=wmax, align=align,
