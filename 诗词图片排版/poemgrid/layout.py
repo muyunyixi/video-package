@@ -1,6 +1,6 @@
 """按内容算出每个字、横线、高亮底块、小黄标在 1440×1920 上的位置。
 
-水平：网格排（一字一格、墨迹居中于字格），最宽一行在画布上居中，它的左格就是全图主左轴 x0。
+水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（15 汉字 +“。”）居中后的左格（93.34 px）；正文与署名各自水平居中。
 纵向：按稿定设计的文本框叠放（字号×行距），整组垂直居中，再加实测校准。
 """
 
@@ -38,7 +38,7 @@ def cells(font, text, size, axis=True):
     """每个字的字格（相对行起点）和绘制原点在格内的偏移；返回 (列表, 整行字格总宽)。
 
     全角字、全角标点占 1 em；半角字按自身步进。axis=True 时全角字按墨迹居中于字格，
-    开符号靠右、闭符号靠左；axis=False（署名）时按步进原样放。整行边界一律取字格外缘。
+    开符号靠右、闭符号靠左；半角字按步进原样放。整行边界一律取字格外缘。
     """
     k = size / font.upm
     x, out = 0.0, []
@@ -147,8 +147,8 @@ def build(cfg, font, marks_override=None):
     n = len(texts)
     v = vertical(font, tpl, n)
 
-    # 水平（v1.3）：先按网格排好每行；再按“汉字取字格外缘、标点取墨迹”的两端边界在画布中线居中；
-    # 主左轴 x0 = 排好后最宽一行的左格，主标题、横线、宋词副标题底块都左对齐它。
+    # 水平（v1.4）：先按网格排好每行；再按“汉字取字格外缘、标点取墨迹”的两端边界在画布中线居中；
+    # 主左轴 x0 固定为七言 16 字标准行（15 汉字 + “。”）居中后的左格（93.34 px），主标题、横线、副标题位置恒定。
     body_size = tpl["body"][0] * S
     widths = [cells(font, t, body_size)[1] if t else 0.0 for t in texts]
     wmax = max(widths)
@@ -161,7 +161,8 @@ def build(cfg, font, marks_override=None):
         starts = [cx - (L + R) / 2] * n
     else:                                          # 宋词：每行各自居中
         starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
-    x0 = min(s for s, w in zip(starts, widths) if w == wmax)
+    std_l, std_r = edges(font, "一" * 15 + "。", body_size)
+    x0 = cx - (std_l + std_r) / 2
 
     lay = dict(mode=tpl["name"], tpl=tpl, bg=tpl["bg"], x0=x0, wmax=wmax, align=align,
                vertical=v, rule=None, sub_box=None, marks=[])
@@ -196,11 +197,11 @@ def build(cfg, font, marks_override=None):
         lay["sub_box"] = dict(x=x0, y=top, w=sub_w + 2 * pad, h=(font.ascent - font.descent) * k + 2 * pad,
                               color=box["color"], opacity=box["opacity"])
 
-    # 署名：字照原样排（半角按步进），整行按墨迹（最左一笔到最右一笔）在画布中线绝对居中
+    # 署名：全角字一字一格且格内按墨迹居中、半角字按步进，整行按墨迹（最左一笔到最右一笔）在画布中线绝对居中
     sign = cfg.get("sign", "")
     sign_size = tpl["sign_size"] * S
-    sl, sr = edges(font, sign, sign_size, axis=False, rule="ink") if sign.strip() else (0.0, 0.0)
-    lay["sign"] = place(font, sign, sign_size, cx - (sl + sr) / 2, v["sign"], axis=False, role="署名")
+    sl, sr = edges(font, sign, sign_size, axis=True, rule="ink") if sign.strip() else (0.0, 0.0)
+    lay["sign"] = place(font, sign, sign_size, cx - (sl + sr) / 2, v["sign"], axis=True, role="署名")
 
     for i, (line, ms) in enumerate(zip(lines, marks)):
         for k in sorted(ms):

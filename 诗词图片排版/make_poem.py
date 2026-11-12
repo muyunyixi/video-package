@@ -60,8 +60,8 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
     L.append(f"输出：{out_png}（{T.OUT_W}×{T.OUT_H}）")
     L.append("")
     L.append("一、版式（输出像素）")
-    L.append(f"  主左轴 x0 = {lay['x0']:.2f}（最宽一行字格宽 {lay['wmax']:.2f}；按汉字字格、标点墨迹的两端边界居中）；"
-             f"正文{'各行左对齐、整块居中' if lay['align'] == 'left' else '每行各自居中'}")
+    L.append(f"  主左轴 x0 = {lay['x0']:.2f}（固定按 16 字标准行对齐；本篇最宽一行字格宽 {lay['wmax']:.2f}）；"
+             f"正文{'各行左对齐、整块居中' if lay['align'] == 'left' else '每行各自居中'}（首格 x = {min(l['x_left'] for l in lay['body'] if l['text']):.2f}）")
     offs = lay["ink_offset"]
     warn = "  ← 偏右超过 4 px，首字左边留白大，看看要不要处理" if max(offs) > 4 else ""
     L.append("  看得见的正文墨迹中心离画布中线：" + "、".join(fmt(o) for o in offs) + " px（总是略偏右，是首字左留白的一半）" + warn)
