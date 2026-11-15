@@ -8,7 +8,8 @@ from . import template as T
 from .layout import text_elements
 from .mark_path import INK_BOX, MARK_D
 
-MARK_SCALE = 40 / 69          # 小黄标轮廓的单位是 2x 图像素 -> 输出像素
+# 小黄标轮廓原始单位是 36 字号下的 2x 图像素 -> 按 T.MARK["font_size"] / 36 换算到输出像素
+MARK_SCALE = (40 / 69) * (T.MARK["font_size"] / 36)
 MARK_HALF_W = (INK_BOX[2] - INK_BOX[0]) / 2 * MARK_SCALE
 MARK_INK_CX = (INK_BOX[0] + INK_BOX[2]) / 2
 
