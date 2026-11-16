@@ -1,4 +1,6 @@
 mode = "宋词"
+# 正文对齐（可选）：宋词默认 "center"（每行居中），长调排成 16 字方块时可写 body_align = "left"（左对齐 x0）
+# body_align = "center"
 title = "定风波"
 subtitle = "桃子会给我寄橘子么"
 # 上下阕之间空一行：写一个空字符串

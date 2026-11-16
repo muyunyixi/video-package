@@ -8,8 +8,7 @@ from . import template as T
 from .layout import text_elements
 from .mark_path import INK_BOX, MARK_D
 
-# 小黄标轮廓原始单位是 36 字号下的 2x 图像素 -> 按 T.MARK["font_size"] / 36 换算到输出像素
-MARK_SCALE = (40 / 69) * (T.MARK["font_size"] / 36)
+MARK_SCALE = (40 / 69) * (T.MARK["font_size"] / 36)  # 2x 图（字号 36）像素 -> 按 MARK["font_size"] 换到输出像素
 MARK_HALF_W = (INK_BOX[2] - INK_BOX[0]) / 2 * MARK_SCALE
 MARK_INK_CX = (INK_BOX[0] + INK_BOX[2]) / 2
 
@@ -42,7 +41,8 @@ def to_svg(lay, font, with_marks=True):
             if g["ink"] is None:
                 continue
             d = font.glyph(g["ch"])["path"]
-            p.append(f'<path transform="translate({g["x"]:.4f} {g["y"]:.4f}) scale({k:.8f} {-k:.8f})" d="{d}"/>')
+            fill_attr = f' fill="{g["color"]}"' if g.get("color") and g["color"] != el["color"] else ""
+            p.append(f'<path{fill_attr} transform="translate({g["x"]:.4f} {g["y"]:.4f}) scale({k:.8f} {-k:.8f})" d="{d}"/>')
         p.append("</g>")
     p.append("</svg>")
     return "\n".join(p)

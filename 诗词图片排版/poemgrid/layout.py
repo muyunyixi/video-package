@@ -1,6 +1,7 @@
 """按内容算出每个字、横线、高亮底块、小黄标在 1440×1920 上的位置。
 
-水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；正文与署名各自水平居中。
+水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；
+正文按 body_align 选择每行各自居中（center）或左对齐于主左轴 x0（left）；署名按墨迹绝对居中。
 纵向：按稿定设计的文本框叠放（字号×行距），整组垂直居中，再加实测校准。
 """
 
@@ -8,28 +9,51 @@ from . import template as T
 from .glyphs import CLOSE, FULL, OPEN, PUNCT
 
 
-# ---------------- 文本与小黄标标记 ----------------
+# ---------------- 文本、小黄标与金句变黄标记 ----------------
 
-def parse_line(s):
-    """'初拈彩缕{花先老}，…' -> ('初拈彩缕花先老，…', {4, 5, 6})：花括号里的字下面放小黄标。"""
-    out, marks, inside = [], set(), False
+def parse_line(s, return_yellow=False):
+    """解析正文行里的标记：
+    - 花括号 '{...}'：在字下面加小黄标；
+    - 方括号 '[...]'：把字直接改成黄色（#F9C06A，用于整句/金句高亮）。
+    默认返回 (纯文本, 小黄标列号集合)；return_yellow=True 时返回 (纯文本, 小黄标列号集合, 黄字列号集合)。
+    """
+    out, marks, yellow = [], set(), set()
+    in_brace, in_bracket = False, False
     for ch in s:
         if ch == "{":
-            if inside:
+            if in_brace:
                 raise ValueError(f"花括号嵌套了：{s}")
-            inside = True
+            in_brace = True
             continue
         if ch == "}":
-            if not inside:
+            if not in_brace:
                 raise ValueError(f"多了一个右花括号：{s}")
-            inside = False
+            in_brace = False
             continue
-        if inside:
-            marks.add(len(out))
+        if ch == "[":
+            if in_bracket:
+                raise ValueError(f"方括号嵌套了：{s}")
+            in_bracket = True
+            continue
+        if ch == "]":
+            if not in_bracket:
+                raise ValueError(f"多了一个右方括号：{s}")
+            in_bracket = False
+            continue
+        idx = len(out)
+        if in_brace:
+            marks.add(idx)
+        if in_bracket:
+            yellow.add(idx)
         out.append(ch)
-    if inside:
+    if in_brace:
         raise ValueError(f"花括号没有闭合：{s}")
-    return "".join(out), marks
+    if in_bracket:
+        raise ValueError(f"方括号没有闭合：{s}")
+    text = "".join(out)
+    if return_yellow:
+        return text, marks, yellow
+    return text, marks
 
 
 # ---------------- 一行字的字格 ----------------
@@ -63,8 +87,8 @@ def cells(font, text, size, axis=True):
 def edges(font, text, size, axis=True, rule="mixed"):
     """一行的左右边界（相对行起点）。
 
-    rule="mixed"：行首、行尾是汉字取字格外缘，是标点取墨迹（正文用；与 公共/字体处理规范 第三节第 5 条相同）；
-    rule="ink"：两端都取墨迹（署名用：署名不在网格里，按看得见的字绝对居中）。
+    rule="mixed"：行首一律取首字字格左缘（含行首标点），行尾是汉字取字格外缘、是标点取墨迹右缘（正文用）；
+    rule="ink"：两端都取墨迹（署名用：按看得见的字绝对居中）。
     """
     cs, _ = cells(font, text, size, axis)
     k = size / font.upm
@@ -74,20 +98,31 @@ def edges(font, text, size, axis=True, rule="mixed"):
     ink_r = c1["left"] + c1["pen"] + g1["xmax"] * k
     if rule == "ink":
         return ink_l, ink_r
-    left = ink_l if PUNCT.search(c0["ch"]) else c0["left"]
+    left = c0["left"]
     right = ink_r if PUNCT.search(c1["ch"]) else c1["left"] + c1["width"]
     return left, right
 
 
-def place(font, text, size, x_left, baseline, axis=True, color=T.WHITE, role=""):
+def _normalize_align(val):
+    v = str(val).strip().lower()
+    if v in ("left", "左对齐", "左"):
+        return "left"
+    if v in ("center", "居中", "每行居中"):
+        return "center"
+    raise ValueError(f"不认识的 body_align：{val}（写 center / 居中 或 left / 左对齐）")
+
+
+def place(font, text, size, x_left, baseline, axis=True, color=T.WHITE, role="", yellow_cols=None):
     cs, width = cells(font, text, size, axis)
     k = size / font.upm
+    yellow_cols = yellow_cols or set()
     glyphs = []
-    for c in cs:
+    for idx, c in enumerate(cs):
         g = font.glyph(c["ch"])
         px = x_left + c["left"] + c["pen"]
+        g_color = T.MARK["color"] if idx in yellow_cols else color
         glyphs.append(dict(
-            ch=c["ch"], size=size, x=px, y=baseline, color=color, axis=axis and bool(FULL.search(c["ch"])),
+            ch=c["ch"], size=size, x=px, y=baseline, color=g_color, axis=axis and bool(FULL.search(c["ch"])),
             cell=(x_left + c["left"], x_left + c["left"] + c["width"]),
             ink=None if g["blank"] else (px + g["xmin"] * k, baseline - g["ymax"] * k,
                                          px + g["xmax"] * k, baseline - g["ymin"] * k),
@@ -135,40 +170,40 @@ def vertical(font, tpl, n_lines):
 # ---------------- 整张图 ----------------
 
 def build(cfg, font, marks_override=None):
-    """cfg：title / subtitle / body（列表）/ sign / mode。marks_override：{行号: {列号,…}}，
-    用参考图识别出的小黄标代替正文里的花括号。"""
+    """cfg：title / subtitle / body（列表）/ sign / mode / body_align（可选：center 或 left）。
+    marks_override：{行号: {列号,…}}，用参考图识别出的小黄标代替正文里的花括号。"""
     tpl = T.template_for(cfg["mode"])
     S = T.S
-    parsed = [parse_line(s) for s in cfg["body"]]
+    parsed = [parse_line(s, return_yellow=True) for s in cfg["body"]]
     texts = [p[0] for p in parsed]
     marks = [p[1] for p in parsed]
+    yellows = [p[2] for p in parsed]
     if marks_override is not None:
         marks = [set(marks_override.get(i, ())) for i in range(len(texts))]
     n = len(texts)
     v = vertical(font, tpl, n)
 
-    # 水平（v1.4）：先按网格排好每行；再按“汉字取字格外缘、标点取墨迹”的两端边界在画布中线居中；
-    # 主左轴 x0 固定为七言 16 字标准行（14 汉字 + “，” + “。”）居中后的左格（93.34 px），主标题、横线、副标题位置恒定。
+    # 水平（v1.6）：主左轴 x0 固定为七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）。
+    # body_align = "left"（默认：近体诗，或宋词方块排）：正文每行第一个字格左缘直接对齐 x0 = 93.34 px；
+    # body_align = "center"（默认：宋词常规排）：正文每行按“行首取字格左缘、行尾汉字取字格外缘/标点取墨迹右缘”各自在画布中线 720 居中。
     body_size = tpl["body"][0] * S
     widths = [cells(font, t, body_size)[1] if t else 0.0 for t in texts]
     wmax = max(widths)
-    align = cfg.get("body_align", tpl["body_align"])
+    align = _normalize_align(cfg.get("body_align", tpl["body_align"]))
     bnds = [edges(font, t, body_size) if t else None for t in texts]
     cx = T.OUT_W / 2
-    if align == "left":                            # 近体诗：各行共用一张网格，整块居中
-        L = min(b[0] for b in bnds if b)
-        R = max(b[1] for b in bnds if b)
-        starts = [cx - (L + R) / 2] * n
-    else:                                          # 宋词：每行各自居中
-        starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
     std_l, std_r = edges(font, "一" * 7 + "，" + "一" * 7 + "。", body_size)
     x0 = cx - (std_l + std_r) / 2
+    if align == "left":                            # 左对齐：每行第 1 个字格左缘固定在 x0（93.34 px）
+        starts = [x0] * n
+    else:                                          # 居中：每行各自在画布中线 720 居中
+        starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
 
     lay = dict(mode=tpl["name"], tpl=tpl, bg=tpl["bg"], x0=x0, wmax=wmax, align=align,
-               vertical=v, rule=None, sub_box=None, marks=[])
+               vertical=v, rule=None, sub_box=None, marks=[], yellows=yellows)
     lines = []
     for i, t in enumerate(texts):
-        lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行"))
+        lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行", yellow_cols=yellows[i]))
     lay["body"] = lines
     # 看得见的墨迹中心离画布中线多少（按上面的规则总是略偏右：首字左边那点留白的一半）
     inked = [l for l in lines if l["text"]]

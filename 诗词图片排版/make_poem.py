@@ -61,7 +61,7 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
     L.append("")
     L.append("一、版式（输出像素）")
     L.append(f"  主左轴 x0 = {lay['x0']:.2f}（固定按 16 字标准行对齐；本篇最宽一行字格宽 {lay['wmax']:.2f}）；"
-             f"正文{'各行左对齐、整块居中' if lay['align'] == 'left' else '每行各自居中'}（首格 x = {min(l['x_left'] for l in lay['body'] if l['text']):.2f}）")
+             f"正文{'左对齐于主左轴 x0（body_align=left）' if lay['align'] == 'left' else '每行各自居中（body_align=center）'}（首格 x = {min(l['x_left'] for l in lay['body'] if l['text']):.2f}）")
     offs = lay["ink_offset"]
     warn = "  ← 偏右超过 4 px，首字左边留白大，看看要不要处理" if max(offs) > 4 else ""
     L.append("  看得见的正文墨迹中心离画布中线：" + "、".join(fmt(o) for o in offs) + " px（总是略偏右，是首字左留白的一半）" + warn)
@@ -80,9 +80,16 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
         b = lay["sub_box"]
         L.append(f"  副标题底块：x {b['x']:.2f}–{b['x'] + b['w']:.2f}，y {b['y']:.2f}–{b['y'] + b['h']:.2f}")
     L.append("")
-    L.append(f"二、小黄标（{mark_source}）")
+    L.append(f"二、高亮与小黄标（{mark_source}）")
+    if lay.get("yellows") and any(lay["yellows"]):
+        y_parts = []
+        for idx, ys in enumerate(lay["yellows"]):
+            if ys:
+                chars = "".join(lay["body"][idx]["glyphs"][k]["ch"] for k in sorted(ys))
+                y_parts.append(f"第{idx + 1}行「{chars}」")
+        L.append("  金句黄字（#F9C06A）：" + "、".join(y_parts))
     if not lay["marks"]:
-        L.append("  无")
+        L.append("  小黄标：无")
     heavy = T.MARK["heavy_overlap_px"]
     for m in lay["marks"]:
         gap, note = m.get("gap"), ""
@@ -148,10 +155,10 @@ def main():
     stem = os.path.splitext(os.path.basename(args.config))[0]
     os.makedirs(args.out, exist_ok=True)
 
-    has_braces = any(parse_line(s)[1] for s in cfg["body"])
+    has_braces = any(parse_line(s, return_yellow=True)[1] or parse_line(s, return_yellow=True)[2] for s in cfg["body"])
     lay = build(cfg, font)
     ref = None
-    mark_source = "按配置里的花括号" if has_braces else "无"
+    mark_source = "按配置里的花括号/方括号" if has_braces else "无"
     if args.ref:
         ref = analyze_reference(args.ref, lay, font)
         if not has_braces and ref["detected"]:

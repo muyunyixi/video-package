@@ -120,12 +120,13 @@ def mark_gaps(lay, text_only_img):
     """在只有字的图上量每个标正上方（标的宽度范围内）那个字的墨迹底边，算出间隙。
     只报告，不挪标：负数表示字的底边压进了标里。"""
     a = np.asarray(text_only_img, dtype=float)
-    _, w, _ = maps(a, lay)
+    _, w, mc = maps(a, lay)
+    text_cov = w + mc
     for m in lay["marks"]:
         base = lay["body"][m["row"]]["baseline"]
         r0, r1 = int(base - 60), int(base + 40)
         c0, c1 = int(np.floor(m["cx"] - MARK_HALF_W)), int(np.ceil(m["cx"] + MARK_HALF_W))
-        cr = cross(w[r0:r1 + 1, c0:c1 + 1].max(axis=1))
+        cr = cross(text_cov[r0:r1 + 1, c0:c1 + 1].max(axis=1))
         m["gap"] = None if cr is None else m["top"] - (cr[1] + r0)
 
 
@@ -154,11 +155,16 @@ def recheck(img, lay):
     for el in text_elements(lay):
         if el is lay["rule"]:
             continue
-        cov = dark if (dark is not None and el is lay["sub"]) else w
         wins = glyph_windows(el["glyphs"])
         for j, g in enumerate(el["glyphs"]):
             if j not in wins:
                 continue
+            if dark is not None and el is lay["sub"]:
+                cov = dark
+            elif g.get("color") == T.MARK["color"]:
+                cov = m
+            else:
+                cov = w
             l, t, r, b = g["ink"]
             e = box_extent(cov, *[wins[j][1], wins[j][3], wins[j][0], wins[j][2]])
             if e is None:
@@ -166,7 +172,14 @@ def recheck(img, lay):
             rows.append(dict(el=el["role"], ch=g["ch"], dx=(e[0] + e[2]) / 2 - (l + r) / 2,
                              dy=(e[1] + e[3]) / 2 - (t + b) / 2))
     marks = []
-    found = detect_marks(m)
+    # 复测小黄标时，只搜正文基线下方的小黄标区域（避开改成黄色的金句正文笔画）
+    m_marks_only = np.zeros_like(m)
+    for line in lay["body"]:
+        if line["text"]:
+            r0 = max(0, int(line["baseline"] + 4))
+            r1 = min(m.shape[0], int(line["baseline"] + 45))
+            m_marks_only[r0:r1, :] = m[r0:r1, :]
+    found = detect_marks(m_marks_only)
     for mk in lay["marks"]:
         if not found:
             break
