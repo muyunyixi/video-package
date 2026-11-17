@@ -1,4 +1,4 @@
-"""按内容算出每个字、横线、高亮底块、小黄标在 1440×1920 上的位置。
+"""按内容算出每个字、横线、高亮底块、小黄标、浅金底衬在 1440×1920 上的位置。
 
 水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；
 正文按 body_align 选择每行各自居中（center）或左对齐于主左轴 x0（left）；署名按墨迹绝对居中。
@@ -9,16 +9,19 @@ from . import template as T
 from .glyphs import CLOSE, FULL, OPEN, PUNCT
 
 
-# ---------------- 文本、小黄标与金句变黄标记 ----------------
+# ---------------- 文本、小黄标、金句变黄与浅金底衬标记 ----------------
 
-def parse_line(s, return_yellow=False):
+def parse_line(s, return_yellow=False, return_all=False):
     """解析正文行里的标记：
     - 花括号 '{...}'：在字下面加小黄标；
-    - 方括号 '[...]'：把字直接改成黄色（#F9C06A，用于整句/金句高亮）。
-    默认返回 (纯文本, 小黄标列号集合)；return_yellow=True 时返回 (纯文本, 小黄标列号集合, 黄字列号集合)。
+    - 方括号 '[...]'：把字直接改成黄色（#F9C06A，用于整句/金句高亮）；
+    - 尖括号 '<...>'：在该段/整句白字下方加浅金底衬 + 底边虚线（v1.9 新增可选项）。
+    默认返回 (纯文本, 小黄标列号集合)；
+    return_yellow=True 时返回 (纯文本, 小黄标列号集合, 黄字列号集合)；
+    return_all=True 时返回 (纯文本, 小黄标列号集合, 黄字列号集合, 浅金底衬列号集合)。
     """
-    out, marks, yellow = [], set(), set()
-    in_brace, in_bracket = False, False
+    out, marks, yellow, boxed = [], set(), set(), set()
+    in_brace, in_bracket, in_angle = False, False, False
     for ch in s:
         if ch == "{":
             if in_brace:
@@ -40,17 +43,33 @@ def parse_line(s, return_yellow=False):
                 raise ValueError(f"多了一个右方括号：{s}")
             in_bracket = False
             continue
+        if ch == "<":
+            if in_angle:
+                raise ValueError(f"尖括号嵌套了：{s}")
+            in_angle = True
+            continue
+        if ch == ">":
+            if not in_angle:
+                raise ValueError(f"多了一个右尖括号：{s}")
+            in_angle = False
+            continue
         idx = len(out)
         if in_brace:
             marks.add(idx)
         if in_bracket:
             yellow.add(idx)
+        if in_angle:
+            boxed.add(idx)
         out.append(ch)
     if in_brace:
         raise ValueError(f"花括号没有闭合：{s}")
     if in_bracket:
         raise ValueError(f"方括号没有闭合：{s}")
+    if in_angle:
+        raise ValueError(f"尖括号没有闭合：{s}")
     text = "".join(out)
+    if return_all:
+        return text, marks, yellow, boxed
     if return_yellow:
         return text, marks, yellow
     return text, marks
@@ -185,18 +204,19 @@ def build(cfg, font, marks_override=None):
     marks_override：{行号: {列号,…}}，用参考图识别出的小黄标代替正文里的花括号。"""
     tpl = T.template_for(cfg["mode"])
     S = T.S
-    parsed = [parse_line(s, return_yellow=True) for s in cfg["body"]]
+    parsed = [parse_line(s, return_all=True) for s in cfg["body"]]
     texts = [p[0] for p in parsed]
     marks = [p[1] for p in parsed]
     yellows = [p[2] for p in parsed]
+    boxeds = [p[3] for p in parsed]
     if marks_override is not None:
         marks = [set(marks_override.get(i, ())) for i in range(len(texts))]
     n = len(texts)
     v = vertical(font, tpl, texts)
 
-    # 水平（v1.6）：主左轴 x0 固定为七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）。
-    # body_align = "left"（默认：近体诗，或宋词方块排）：正文每行第一个字格左缘直接对齐 x0 = 93.34 px；
-    # body_align = "center"（默认：宋词常规排）：正文每行按“行首取字格左缘、行尾汉字取字格外缘/标点取墨迹右缘”各自在画布中线 720 居中。
+    # 水平（v1.8）：主左轴 x0 固定为七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）。
+    # body_align = "center"（近体诗与宋词均默认）：正文每行按“行首取字格左缘、行尾汉字取字格外缘/标点取墨迹右缘”各自在画布中线 720 居中；
+    # body_align = "left"（可选）：正文每行第一个字格左缘直接对齐 x0 = 93.34 px。
     body_size = tpl["body"][0] * S
     widths = [cells(font, t, body_size)[1] if t else 0.0 for t in texts]
     wmax = max(widths)
@@ -211,11 +231,38 @@ def build(cfg, font, marks_override=None):
         starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
 
     lay = dict(mode=tpl["name"], tpl=tpl, bg=tpl["bg"], x0=x0, wmax=wmax, align=align,
-               vertical=v, rule=None, sub_box=None, marks=[], yellows=yellows)
+               vertical=v, rule=None, sub_box=None, marks=[], yellows=yellows, line_boxes=[])
     lines = []
     for i, t in enumerate(texts):
         lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行", yellow_cols=yellows[i]))
     lay["body"] = lines
+
+    # 正文浅金底衬（v1.9，用 <...> 标记）：左右复用副标题底块的 pad_x_1x = 8.5（9.855 px），上下在 1 em 内容框外各扩 pad_y_px = 6.0 px
+    lb_cfg = T.LINE_BOX
+    pad_x = lb_cfg["pad_x_1x"] * S
+    pad_y = lb_cfg["pad_y_px"]
+    k_body = body_size / font.upm
+    for i, (line, bcols) in enumerate(zip(lines, boxeds)):
+        if not bcols:
+            continue
+        cols_sorted = sorted(bcols)
+        g_first = line["glyphs"][cols_sorted[0]]
+        g_last = line["glyphs"][cols_sorted[-1]]
+        left_edge = g_first["cell"][0]
+        right_edge = g_last["ink"][2] if (PUNCT.search(g_last["ch"]) and g_last["ink"]) else g_last["cell"][1]
+        box_x = left_edge - pad_x
+        box_w = (right_edge - left_edge) + 2 * pad_x
+        box_y = line["baseline"] - font.ascent * k_body - pad_y
+        box_h = (font.ascent - font.descent) * k_body + 2 * pad_y
+        lay["line_boxes"].append(dict(
+            row=i, cols=cols_sorted,
+            text="".join(line["glyphs"][c]["ch"] for c in cols_sorted),
+            x=box_x, y=box_y, w=box_w, h=box_h,
+            color=lb_cfg["color"], opacity=lb_cfg["opacity"], rx=lb_cfg["rx_px"],
+            dash_opacity=lb_cfg["dash_opacity"], dash_width=lb_cfg["dash_width_px"],
+            dasharray=lb_cfg["dasharray"],
+        ))
+
     # 看得见的墨迹中心离画布中线多少（按上面的规则总是略偏右：首字左边那点留白的一半）
     inked = [l for l in lines if l["text"]]
 

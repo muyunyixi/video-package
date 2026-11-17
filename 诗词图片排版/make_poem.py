@@ -88,6 +88,10 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
                 chars = "".join(lay["body"][idx]["glyphs"][k]["ch"] for k in sorted(ys))
                 y_parts.append(f"第{idx + 1}行「{chars}」")
         L.append("  金句黄字（#F9C06A）：" + "、".join(y_parts))
+    if lay.get("line_boxes"):
+        for lb in lay["line_boxes"]:
+            L.append(f"  浅金底衬（{lb['color']} {int(lb['opacity']*100)}%）：第{lb['row'] + 1}行「{lb['text']}」"
+                     f" x {lb['x']:.2f}–{lb['x'] + lb['w']:.2f}，y {lb['y']:.2f}–{lb['y'] + lb['h']:.2f}")
     if not lay["marks"]:
         L.append("  小黄标：无")
     heavy = T.MARK["heavy_overlap_px"]
@@ -155,10 +159,15 @@ def main():
     stem = os.path.splitext(os.path.basename(args.config))[0]
     os.makedirs(args.out, exist_ok=True)
 
-    has_braces = any(parse_line(s, return_yellow=True)[1] or parse_line(s, return_yellow=True)[2] for s in cfg["body"])
+    has_braces = any(
+        parse_line(s, return_all=True)[1]
+        or parse_line(s, return_all=True)[2]
+        or parse_line(s, return_all=True)[3]
+        for s in cfg["body"]
+    )
     lay = build(cfg, font)
     ref = None
-    mark_source = "按配置里的花括号/方括号" if has_braces else "无"
+    mark_source = "按配置里的花括号/方括号/尖括号" if has_braces else "无"
     if args.ref:
         ref = analyze_reference(args.ref, lay, font)
         if not has_braces and ref["detected"]:

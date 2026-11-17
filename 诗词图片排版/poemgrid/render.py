@@ -28,6 +28,16 @@ def to_svg(lay, font, with_marks=True):
         b = lay["sub_box"]
         p.append(f'<rect x="{b["x"]:.4f}" y="{b["y"]:.4f}" width="{b["w"]:.4f}" height="{b["h"]:.4f}" '
                  f'fill="{b["color"]}" fill-opacity="{b["opacity"]}"/>')
+    if lay.get("line_boxes"):
+        p.append("<g>")
+        for lb in lay["line_boxes"]:
+            y_bot = lb["y"] + lb["h"]
+            p.append(f'<rect x="{lb["x"]:.4f}" y="{lb["y"]:.4f}" width="{lb["w"]:.4f}" height="{lb["h"]:.4f}" '
+                     f'rx="{lb["rx"]:.2f}" fill="{lb["color"]}" fill-opacity="{lb["opacity"]}"/>')
+            p.append(f'<line x1="{lb["x"]:.4f}" y1="{y_bot:.4f}" x2="{lb["x"] + lb["w"]:.4f}" y2="{y_bot:.4f}" '
+                     f'stroke="{lb["color"]}" stroke-width="{lb["dash_width"]:.2f}" '
+                     f'stroke-opacity="{lb["dash_opacity"]}" stroke-dasharray="{lb["dasharray"]}"/>')
+        p.append("</g>")
     if with_marks and lay["marks"]:
         p.append(f'<g fill="{T.MARK["color"]}" fill-rule="evenodd">')
         for m in lay["marks"]:
