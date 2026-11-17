@@ -2,7 +2,7 @@
 
 水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；
 正文按 body_align 选择每行各自居中（center）或左对齐于主左轴 x0（left）；署名按墨迹绝对居中。
-纵向：按稿定设计的文本框叠放（字号×行距），整组垂直居中，再加实测校准。
+纵向：按稿定设计的文本框叠放（字号×行距），宋词上下阕之间的空行按 0.5 行高（60 px，基线差 180 px）算，整组垂直居中，再加实测校准。
 """
 
 from . import template as T
@@ -133,8 +133,10 @@ def place(font, text, size, x_left, baseline, axis=True, color=T.WHITE, role="",
 
 # ---------------- 纵向 ----------------
 
-def vertical(font, tpl, n_lines):
-    """各元素的基线（输出像素）。n_lines 是正文行数（宋词上下阕之间的空行也算一行）。"""
+def vertical(font, tpl, lines_or_n):
+    """各元素的基线（输出像素）。
+    lines_or_n 可传正文文本列表 texts（其中空字符串 "" 按 tpl['empty_line_ratio'] 行高算，默认 0.5 行即 60 px）或整数行数。
+    """
     beta = font.beta
 
     def top_to_base(s, lh):          # 行框上缘到基线
@@ -146,7 +148,12 @@ def vertical(font, tpl, n_lines):
     stack += [("sub",) + tpl["sub"], ("spacer",) + tpl["spacer"]]
     bs, bl = tpl["body"]
     line_h = bs * bl
-    body_box_h = (n_lines + 2) * line_h          # 正文各行 + 空一行 + 署名行
+    empty_ratio = tpl.get("empty_line_ratio", 0.5)
+    if isinstance(lines_or_n, int):
+        factors = [1.0] * lines_or_n
+    else:
+        factors = [1.0 if t else empty_ratio for t in lines_or_n]
+    body_box_h = (sum(factors) + 2.0) * line_h   # 正文各行（含空行系数）+ 空一行 + 署名行
     bottom_h = tpl["bottom"][0] * tpl["bottom"][1] if tpl["bottom"] else 0.0
     total = sum(s * lh for _, s, lh in stack) + body_box_h + bottom_h
 
@@ -156,8 +163,12 @@ def vertical(font, tpl, n_lines):
         tops[name] = y
         base[name] = y + top_to_base(s, lh)
         y += s * lh
-    body = [y + i * line_h + top_to_base(bs, bl) for i in range(n_lines)]
-    sign = y + (n_lines + 1) * line_h + top_to_base(bs, bl)
+    body = []
+    cur_y = y
+    for f in factors:
+        body.append(cur_y + top_to_base(bs, bl))
+        cur_y += f * line_h
+    sign = cur_y + 1.0 * line_h + top_to_base(bs, bl)
 
     cal = tpl["calib_dy_px"]
     out = {name: base[name] * T.S + cal.get(name, 0.0) for name in ("title", "rule", "sub") if name in base}
@@ -181,7 +192,7 @@ def build(cfg, font, marks_override=None):
     if marks_override is not None:
         marks = [set(marks_override.get(i, ())) for i in range(len(texts))]
     n = len(texts)
-    v = vertical(font, tpl, n)
+    v = vertical(font, tpl, texts)
 
     # 水平（v1.6）：主左轴 x0 固定为七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）。
     # body_align = "left"（默认：近体诗，或宋词方块排）：正文每行第一个字格左缘直接对齐 x0 = 93.34 px；
