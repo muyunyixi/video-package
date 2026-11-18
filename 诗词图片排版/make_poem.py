@@ -90,8 +90,21 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
         L.append("  金句黄字（#F9C06A）：" + "、".join(y_parts))
     if lay.get("line_boxes"):
         for lb in lay["line_boxes"]:
-            L.append(f"  浅金底衬（{lb['color']} {int(lb['opacity']*100)}%）：第{lb['row'] + 1}行「{lb['text']}」"
+            L.append(f"  [插件二·浅金底衬]（{lb['color']} {int(lb['opacity']*100)}%）：第{lb['row'] + 1}行「{lb['text']}」"
                      f" x {lb['x']:.2f}–{lb['x'] + lb['w']:.2f}，y {lb['y']:.2f}–{lb['y'] + lb['h']:.2f}")
+    if lay.get("watermark"):
+        wm = lay["watermark"]
+        L.append(f"  [插件一·大字藏锋]：「{wm['ch']}」字号 {wm['size']:.1f} px，不透明度 {wm['opacity']*100:.1f}%，"
+                 f"墨迹 x {wm['ink'][0]:.2f}–{wm['ink'][2]:.2f}，y {wm['ink'][1]:.2f}–{wm['ink'][3]:.2f}")
+    if lay.get("marginalia"):
+        mg = lay["marginalia"]
+        c_desc = "；".join(
+            f"第{c['index']}列「{c['text']}」(中轴 x={c['cx']:.2f}, 竖线 x={c['line_x']:.2f}, "
+            f"墨迹 y={c['ink_top']:.2f}–{c['ink_bot']:.2f}, 竖线 y={c['line_top']:.2f}–{c['line_bot']:.2f}, "
+            f"上下各超 {c['top_overhang']:.2f}/{c['bot_overhang']:.2f} px)"
+            for c in mg["columns"]
+        )
+        L.append(f"  [插件一·水印词序]：对齐主右轴 x_right={mg['x_right']:.2f}，参照顶 y_ref_top={mg['y_ref_top']:.2f}；{c_desc}")
     if not lay["marks"]:
         L.append("  小黄标：无")
     heavy = T.MARK["heavy_overlap_px"]
@@ -192,7 +205,8 @@ def main():
         with zipfile.ZipFile(os.path.join(args.out, f"{stem}.zip"), "w", zipfile.ZIP_STORED) as z:
             z.write(out_png, os.path.basename(out_png))
 
-    rows, marks = recheck(img, lay)
+    recheck_img = rasterize(to_svg(lay, font, with_bg_plugins=False)) if (lay.get("watermark") or lay.get("marginalia")) else img
+    rows, marks = recheck(recheck_img, lay)
     text = report(cfg, lay, out_png, rows, marks, ref, mark_source)
     with open(os.path.join(args.out, f"{stem}_报告.txt"), "w", encoding="utf-8") as f:
         f.write(text + "\n")

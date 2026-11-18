@@ -1,4 +1,5 @@
-"""按内容算出每个字、横线、高亮底块、小黄标、浅金底衬在 1440×1920 上的位置。
+"""按内容算出每个字、横线、高亮底块、小黄标在 1440×1920 上的位置。
+非固定使用的可选视觉插件（大字藏锋、水印词序、浅金底衬）由 `poemgrid/plugins.py` 按需构建。
 
 水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；
 正文按 body_align 选择每行各自居中（center）或左对齐于主左轴 x0（left）；署名按墨迹绝对居中。
@@ -6,8 +7,8 @@
 """
 
 from . import template as T
+from . import plugins as P
 from .glyphs import CLOSE, FULL, OPEN, PUNCT
-
 
 # ---------------- 文本、小黄标、金句变黄与浅金底衬标记 ----------------
 
@@ -237,31 +238,13 @@ def build(cfg, font, marks_override=None):
         lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行", yellow_cols=yellows[i]))
     lay["body"] = lines
 
-    # 正文浅金底衬（v1.9，用 <...> 标记）：左右复用副标题底块的 pad_x_1x = 8.5（9.855 px），上下在 1 em 内容框外各扩 pad_y_px = 6.0 px
-    lb_cfg = T.LINE_BOX
-    pad_x = lb_cfg["pad_x_1x"] * S
-    pad_y = lb_cfg["pad_y_px"]
-    k_body = body_size / font.upm
-    for i, (line, bcols) in enumerate(zip(lines, boxeds)):
-        if not bcols:
-            continue
-        cols_sorted = sorted(bcols)
-        g_first = line["glyphs"][cols_sorted[0]]
-        g_last = line["glyphs"][cols_sorted[-1]]
-        left_edge = g_first["cell"][0]
-        right_edge = g_last["ink"][2] if (PUNCT.search(g_last["ch"]) and g_last["ink"]) else g_last["cell"][1]
-        box_x = left_edge - pad_x
-        box_w = (right_edge - left_edge) + 2 * pad_x
-        box_y = line["baseline"] - font.ascent * k_body - pad_y
-        box_h = (font.ascent - font.descent) * k_body + 2 * pad_y
-        lay["line_boxes"].append(dict(
-            row=i, cols=cols_sorted,
-            text="".join(line["glyphs"][c]["ch"] for c in cols_sorted),
-            x=box_x, y=box_y, w=box_w, h=box_h,
-            color=lb_cfg["color"], opacity=lb_cfg["opacity"], rx=lb_cfg["rx_px"],
-            dash_opacity=lb_cfg["dash_opacity"], dash_width=lb_cfg["dash_width_px"],
-            dasharray=lb_cfg["dasharray"],
-        ))
+    # 可选视觉插件（v2.0 模块化插件包，详见 plugins.py 与《视觉插件说明.md》）
+    lay["line_boxes"] = P.build_line_boxes(font, lines, boxeds, body_size)
+    pcfg = cfg.get("plugins", {})
+    wm_opt = pcfg.get("watermark", cfg.get("watermark", None))
+    marg_opt = pcfg.get("marginalia", cfg.get("marginalia", None))
+    lay["watermark"] = P.build_watermark(font, wm_opt)
+    lay["marginalia"] = P.build_marginalia(font, marg_opt, x0)
 
     # 看得见的墨迹中心离画布中线多少（按上面的规则总是略偏右：首字左边那点留白的一半）
     inked = [l for l in lines if l["text"]]
