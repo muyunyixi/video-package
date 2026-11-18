@@ -1,41 +1,52 @@
-"""非固定使用的可选视觉插件包（v2.1 独立模块）。
+"""非固定使用的可选视觉插件包（v2.2 独立模块）。
 
 本模块包含两大独立插件功能（默认均关闭，底色固定为纯粹实色，按需在配置中引用启用）：
-1. 插件一：背景装帧异化插件（二合一整体方案：大字藏锋右下角对称底字 + 水印词序右上角竖排小字）
-2. 插件二：正文选中底衬插件（`<...>` 次重点句“12% 浅金底衬 + 70% 底边虚线”高亮）
+1. 插件一：背景装帧异化插件（二合一整体方案：大字藏锋右下角对称底字 + 右上角固定 40×140 px 装饰角标，默认 bamboo_moon 瘦竹新月）
+2. 插件二：正文选中底衬插件（`<...>` 宋词次重点短句“18% 浅金底衬 + 70% 底边虚线”高亮）
 
-详细规范与数学推导见《视觉插件说明.md》。
+详细规范与精确矢量坐标见《视觉插件说明.md》。
 """
 
 from . import template as T
 from .glyphs import PUNCT
 
 # ==============================================================================
-# 插件一：背景装帧异化插件（二合一：大字藏锋对称底字 + 水印词序右上角竖排小字）
+# 插件一：背景装帧异化插件（二合一：大字藏锋对称底字 + 右上角固定角标/眉批）
 # ==============================================================================
 
 # 1.1 「大字藏锋」右下角超大尺度对称核心字暗纹
 WATERMARK = {
     "color": "#FFFFFF",
-    "opacity": 0.040,           # v2.1：4.0% 极低不透明度纯白暗纹（由 3.2% 统一调为 4.0%）
+    "opacity": 0.040,           # 4.0% 极低不透明度纯白暗纹
     "size_px": 1080.0,          # 字号 1080 px（占画布宽 1440 px 的 75%，1x 为 931.5）
     "right_margin_px": 8.99,    # 墨迹右缘距画布右边界留白（对应「春」字 x_origin = 390.0 px，墨迹右缘 1431.01 px）
     "bottom_margin_px": 70.75,  # 墨迹下缘距画布底边界留白（对应「春」字 baseline = 1748.0 px，墨迹下缘 1849.25 px）
 }
 
-# 1.2 「水印词序」右上角竖排古籍眉批词谱 + 界栏竖线
+# 1.2 右上角固定尺寸纯装饰角标（v2.2 固定 40×140 px 槽位，默认 bamboo_moon 瘦竹新月）
+ORNAMENT = {
+    "style": "bamboo_moon",     # 默认风格：瘦竹新月（可选：bamboo_moon / willow）
+    "width_px": 40.0,           # 固定槽位宽度 40.00 px
+    "height_px": 140.0,         # 固定槽位高度 140.00 px
+    "color": "#F9C06A",         # 全图唯一暖金色值
+    "opacity": 0.350,           # 统一不透明度 35.0%（v2.2 适配统一红底 #900202）
+    "frame_width_px": 1.0,      # 直角外框线宽 1.0 px
+    # 位置固定：右缘对齐主右轴 x_right = 1440 - x0 = 1346.66 px，顶缘对齐 y_top = x0 = 93.34 px
+}
+
+# 1.3 「水印词序」右上角竖排古籍眉批词谱 + 界栏竖线（兼容保留）
 MARGINALIA = {
     "color": "#F9C06A",
-    "text_opacity": 0.250,      # v2.1：眉批小字不透明度统一为 25.0%（0.250）
-    "line_opacity": 0.250,      # v2.1：界栏竖线不透明度统一为 25.0%（0.250，与眉批小字一致）
-    "line_width_px": 1.0,       # 界栏竖线线宽 1.0 px
-    "size_px": 25.0,            # v2.1：字号固定为输出图 25.00 px（1x 为 21.5625）
-    "size_1x": 21.5625,         # 25.00 / (80/69) = 21.5625 (1x)
-    "step_ratio": 1.36,         # 纵向步进倍数：1.36 * 25.00 = 34.00 px（25 px 字高 + 9.0 px 字距）
-    "col_step_px": 40.0,        # 相邻两列文字中轴间距 40.00 px（正文格宽的 1/2），竖线居中在列间 ±20.00 px 处
-    "y0_px": 150.0,             # 最右侧第 1 列首字 1 em 字格起始上缘 y0 = 150.00 px（1x 为 129.375）
-    "pad_ink_px": 6.0,          # 竖线上下两端超出首、末字实测墨迹的固定外扩量 6.00 px
-    "cjk_mid_upm": 348.0,       # 常规汉字轮廓中心高度（用于将间隔号“·”在纵向居中）
+    "text_opacity": 0.250,
+    "line_opacity": 0.250,
+    "line_width_px": 1.0,
+    "size_px": 25.0,
+    "size_1x": 21.5625,
+    "step_ratio": 1.36,
+    "col_step_px": 40.0,
+    "y0_px": 150.0,
+    "pad_ink_px": 6.0,
+    "cjk_mid_upm": 348.0,
 }
 
 # ==============================================================================
@@ -43,11 +54,11 @@ MARGINALIA = {
 # ==============================================================================
 LINE_BOX = {
     "color": "#F9C06A",
-    "opacity": 0.120,           # v2.1：12.0% 浅金底衬（置于白字下方，白字保持纯白锐利）
+    "opacity": 0.180,           # 18.0% 浅金底衬（v2.2 适配统一红底 #900202，置于白字下方，白字保持纯白锐利）
     "pad_x_1x": 8.5,            # 左右边距复用副标题底块的 8.5（1x）= 9.8551 px
     "pad_y_px": 6.0,            # 上下边距（输出像素）：在 1 em 内容框（80 px）上下各扩 6.0 px，总高 92.0 px
     "rx_px": 4.0,               # 圆角半径（输出像素）
-    "dash_opacity": 0.700,      # v2.1：底边暖金虚线不透明度统一为 70.0%（与宋词副标题底块 70% 统一）
+    "dash_opacity": 0.700,      # 底边暖金虚线不透明度 70.0%（与宋词副标题底块 70% 统一）
     "dash_width_px": 1.6,       # 底边暖金虚线线宽（输出像素）
     "dasharray": "5 5",         # 底边虚线步进（5 px 实线 + 5 px 间隔）
 }
@@ -116,12 +127,114 @@ def build_watermark(font, wm_cfg):
     )
 
 
-def build_marginalia(font, marg_cfg, x0):
-    """构建插件一之「水印词序」右上角竖排词谱眉批 + 界栏竖线布局。
-    水平：最右侧第 1 条界栏竖线固定对齐主右轴 x_right = OUT_W - x0 = 1346.66 px（即 16 字标准行句号墨迹右缘）；
-    纵向：以最右侧第 1 列首字的实测墨迹上缘 y_ref_top 为绝对参照值，左侧各列首字墨迹上缘对齐 y_ref_top，
-          竖线上下两端超出首、末字实测墨迹严格均为 pad_ink_px = 6.00 px。
+def build_ornament(orn_cfg, x0):
+    """构建插件一之右上角固定 40×140 px 纯装饰角标（v2.2）。
+    槽位位置恒定：x in [x_right - 40, x_right] (1306.66..1346.66 px), y in [y_top, y_top + 140] (93.34..233.34 px)。
+    内置矢量路径完全确定，保证每次出图像素级一致。
     """
+    if not orn_cfg:
+        return None
+    if isinstance(orn_cfg, bool):
+        cfg = ORNAMENT
+    elif isinstance(orn_cfg, str):
+        cfg = {**ORNAMENT, "style": orn_cfg.strip().lower()}
+    elif isinstance(orn_cfg, dict):
+        cfg = {**ORNAMENT, **orn_cfg}
+    else:
+        return None
+
+    style = cfg["style"]
+    w = float(cfg["width_px"])
+    h = float(cfg["height_px"])
+    xr = T.OUT_W - x0   # 1346.6602 px
+    yt = x0             # 93.3398 px
+    xl = xr - w         # 1306.6602 px
+    yb = yt + h         # 233.3398 px
+
+    # 外框直角 L 线：从 (xl, yt) -> (xr, yt) -> (xr, yb)
+    frame_d = f"M {xl:.4f} {yt:.4f} L {xr:.4f} {yt:.4f} L {xr:.4f} {yb:.4f}"
+    strokes = []
+    fills = []
+
+    if style == "bamboo_moon":
+        # 1. 三节微斜瘦竹竿（自右上微斜向左下，总斜移 4.5 px）
+        bx = xr - 11.0
+        strokes.append((
+            f"M {bx:.4f} {yt + 22.0:.4f} L {bx - 1.5:.4f} {yt + 62.0:.4f} "
+            f"M {bx - 1.5:.4f} {yt + 65.0:.4f} L {bx - 3.0:.4f} {yt + 104.0:.4f} "
+            f"M {bx - 3.0:.4f} {yt + 107.0:.4f} L {bx - 4.5:.4f} {yb - 10.0:.4f}",
+            1.20,
+        ))
+        # 2. 两道竹节横刻
+        strokes.append((
+            f"M {bx - 4.0:.4f} {yt + 63.5:.4f} L {bx + 1.0:.4f} {yt + 63.5:.4f} "
+            f"M {bx - 5.5:.4f} {yt + 105.5:.4f} L {bx - 0.5:.4f} {yt + 105.5:.4f}",
+            1.10,
+        ))
+        # 3. 偏心双弧透视弦月（外弧 r=8.5, 内弧 r=7.2 向右上偏移 (3.8, -2.2)）
+        mx, my = xl + 12.0, yt + 22.0
+        # 用精确 SVG 圆弧指令 (A rx ry x_rot large_arc sweep x y) 还原 Cairo arc/arc_negative
+        # 外弧：-0.35*pi (-63°) 到 +0.75*pi (+135°), 顺时针 sweep=1, large_arc=1 (198° > 180°)
+        # 起点 (mx + 8.5*cos(-63°), my + 8.5*sin(-63°)), 终点 (mx + 8.5*cos(135°), my + 8.5*sin(135°))
+        import math
+        o_r = 8.5
+        i_r = 7.2
+        imx, imy = mx + 3.8, my - 2.2
+        ox0, oy0 = mx + o_r * math.cos(-0.35 * math.pi), my + o_r * math.sin(-0.35 * math.pi)
+        ox1, oy1 = mx + o_r * math.cos(0.75 * math.pi), my + o_r * math.sin(0.75 * math.pi)
+        ix0, iy0 = imx + i_r * math.cos(0.72 * math.pi), imy + i_r * math.sin(0.72 * math.pi)
+        ix1, iy1 = imx + i_r * math.cos(-0.32 * math.pi), imy + i_r * math.sin(-0.32 * math.pi)
+        moon_d = (
+            f"M {ox0:.4f} {oy0:.4f} "
+            f"A {o_r:.4f} {o_r:.4f} 0 1 1 {ox1:.4f} {oy1:.4f} "
+            f"L {ix0:.4f} {iy0:.4f} "
+            f"A {i_r:.4f} {i_r:.4f} 0 1 0 {ix1:.4f} {iy1:.4f} Z"
+        )
+        fills.append(moon_d)
+        # 4. 两片竹节尖叶
+        fills.append(
+            f"M {bx - 2.0:.4f} {yt + 63.5:.4f} "
+            f"C {bx - 14.0:.4f} {yt + 60.0:.4f} {bx - 22.0:.4f} {yt + 67.0:.4f} {bx - 28.0:.4f} {yt + 78.0:.4f} "
+            f"C {bx - 18.0:.4f} {yt + 72.0:.4f} {bx - 10.0:.4f} {yt + 67.0:.4f} {bx - 2.0:.4f} {yt + 63.5:.4f} Z"
+        )
+        fills.append(
+            f"M {bx - 3.5:.4f} {yt + 105.5:.4f} "
+            f"C {bx - 15.0:.4f} {yt + 103.0:.4f} {bx - 22.0:.4f} {yt + 111.0:.4f} {bx - 26.0:.4f} {yt + 123.0:.4f} "
+            f"C {bx - 17.0:.4f} {yt + 116.0:.4f} {bx - 10.0:.4f} {yt + 110.0:.4f} {bx - 3.5:.4f} {yt + 105.5:.4f} Z"
+        )
+    elif style == "willow":
+        strokes.append((
+            f"M {xr - 8.5:.4f} {yt + 12.0:.4f} "
+            f"C {xr - 11.5:.4f} {yt + 44.0:.4f} {xr - 16.5:.4f} {yt + 82.0:.4f} {xr - 24.5:.4f} {yt + 122.0:.4f}",
+            1.20,
+        ))
+        fills.extend([
+            (f"M {xr - 10.8:.4f} {yt + 28.0:.4f} "
+             f"C {xr - 19.0:.4f} {yt + 31.0:.4f} {xr - 24.5:.4f} {yt + 39.5:.4f} {xr - 28.5:.4f} {yt + 50.0:.4f} "
+             f"C {xr - 21.5:.4f} {yt + 43.0:.4f} {xr - 15.5:.4f} {yt + 35.5:.4f} {xr - 10.8:.4f} {yt + 28.0:.4f} Z"),
+            (f"M {xr - 13.6:.4f} {yt + 48.0:.4f} "
+             f"C {xr - 23.5:.4f} {yt + 53.0:.4f} {xr - 30.5:.4f} {yt + 66.0:.4f} {xr - 35.5:.4f} {yt + 82.0:.4f} "
+             f"C {xr - 27.0:.4f} {yt + 71.0:.4f} {xr - 19.5:.4f} {yt + 59.0:.4f} {xr - 13.6:.4f} {yt + 48.0:.4f} Z"),
+            (f"M {xr - 17.5:.4f} {yt + 72.0:.4f} "
+             f"C {xr - 21.0:.4f} {yt + 84.0:.4f} {xr - 21.5:.4f} {yt + 98.0:.4f} {xr - 19.0:.4f} {yt + 114.0:.4f} "
+             f"C {xr - 16.0:.4f} {yt + 100.0:.4f} {xr - 15.8:.4f} {yt + 85.0:.4f} {xr - 17.5:.4f} {yt + 72.0:.4f} Z"),
+            (f"M {xr - 20.5:.4f} {yt + 90.0:.4f} "
+             f"C {xr - 28.5:.4f} {yt + 98.0:.4f} {xr - 33.0:.4f} {yt + 113.0:.4f} {xr - 35.0:.4f} {yt + 130.0:.4f} "
+             f"C {xr - 28.5:.4f} {yt + 117.0:.4f} {xr - 23.5:.4f} {yt + 103.0:.4f} {xr - 20.5:.4f} {yt + 90.0:.4f} Z"),
+        ])
+    else:
+        raise ValueError(f"不认识的装饰角标风格：{style}（支持 bamboo_moon / willow）")
+
+    return dict(
+        style=style, x=xl, y=yt, w=w, h=h, x_right=xr, y_bot=yb,
+        color=cfg["color"], opacity=float(cfg["opacity"]),
+        frame_width_px=float(cfg["frame_width_px"]),
+        frame_d=frame_d, strokes=strokes, fills=fills,
+    )
+
+
+def build_marginalia(font, marg_cfg, x0):
+    """构建右上角「水印词序」竖排词谱眉批 + 界栏竖线布局（兼容保留）。"""
     if not marg_cfg:
         return None
     if isinstance(marg_cfg, list):

@@ -37,6 +37,16 @@ def to_svg(lay, font, with_marks=True, with_bg_plugins=True):
         p.append(f'<path fill="{wm["color"]}" fill-opacity="{wm["opacity"]:.4f}" '
                  f'transform="translate({wm["x"]:.4f} {wm["baseline"]:.4f}) scale({k_wm:.8f} {-k_wm:.8f})" d="{d_wm}"/>')
 
+    if lay.get("ornament") and with_marks and with_bg_plugins:
+        orn = lay["ornament"]
+        p.append(f'<g opacity="{orn["opacity"]:.4f}">')
+        p.append(f'<path d="{orn["frame_d"]}" fill="none" stroke="{orn["color"]}" stroke-width="{orn["frame_width_px"]:.2f}"/>')
+        for sd, sw in orn["strokes"]:
+            p.append(f'<path d="{sd}" fill="none" stroke="{orn["color"]}" stroke-width="{sw:.2f}" stroke-linecap="round"/>')
+        for fd in orn["fills"]:
+            p.append(f'<path d="{fd}" fill="{orn["color"]}"/>')
+        p.append("</g>")
+
     if lay.get("marginalia") and with_marks and with_bg_plugins:
         mg = lay["marginalia"]
         k_m = mg["size_px"] / font.upm
@@ -87,7 +97,7 @@ def to_svg(lay, font, with_marks=True, with_bg_plugins=True):
 
 
 def _draw_svg_path_cairo(ctx, d_str):
-    tokens = re.findall(r'[MLHVQCZmlhvqcz]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', d_str)
+    tokens = re.findall(r'[MLHVQCAZmlhvqcaz]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', d_str)
     i = 0
     cx, cy = 0.0, 0.0
     sx, sy = 0.0, 0.0
@@ -123,6 +133,56 @@ def _draw_svg_path_cairo(ctx, d_str):
             ctx.curve_to(cp1x, cp1y, cp2x, cp2y, x2, y2)
             cx, cy = x2, y2
             i += 4
+        elif cmd == 'A':
+            import math
+            rx_a, ry_a = float(tokens[i]), float(tokens[i+1])
+            x_rot = math.radians(float(tokens[i+2]))
+            large_arc = int(float(tokens[i+3]))
+            sweep = int(float(tokens[i+4]))
+            x2, y2 = float(tokens[i+5]), float(tokens[i+6])
+            i += 7
+            # Endpoint to center parameterization (W3C SVG 1.1 F.6.5)
+            dx2 = (cx - x2) / 2.0
+            dy2 = (cy - y2) / 2.0
+            x1p = math.cos(x_rot) * dx2 + math.sin(x_rot) * dy2
+            y1p = -math.sin(x_rot) * dx2 + math.cos(x_rot) * dy2
+            rx_a, ry_a = abs(rx_a), abs(ry_a)
+            lam = (x1p**2)/(rx_a**2) + (y1p**2)/(ry_a**2)
+            if lam > 1.0:
+                rx_a *= math.sqrt(lam)
+                ry_a *= math.sqrt(lam)
+            num = max(0.0, rx_a**2 * ry_a**2 - rx_a**2 * y1p**2 - ry_a**2 * x1p**2)
+            den = rx_a**2 * y1p**2 + ry_a**2 * x1p**2
+            coef = math.sqrt(num / den) if den > 1e-12 else 0.0
+            if large_arc == sweep:
+                coef = -coef
+            cxp = coef * (rx_a * y1p / ry_a)
+            cyp = coef * -(ry_a * x1p / rx_a)
+            acx = math.cos(x_rot)*cxp - math.sin(x_rot)*cyp + (cx + x2)/2.0
+            acy = math.sin(x_rot)*cxp + math.cos(x_rot)*cyp + (cy + y2)/2.0
+            def vec_ang(ux, uy, vx, vy):
+                dot = ux*vx + uy*vy
+                mag = math.hypot(ux, uy) * math.hypot(vx, vy)
+                ang = math.acos(max(-1.0, min(1.0, dot / mag)))
+                if ux*vy - uy*vx < 0:
+                    ang = -ang
+                return ang
+            theta1 = vec_ang(1, 0, (x1p - cxp)/rx_a, (y1p - cyp)/ry_a)
+            dtheta = vec_ang((x1p - cxp)/rx_a, (y1p - cyp)/ry_a, (-x1p - cxp)/rx_a, (-y1p - cyp)/ry_a)
+            if sweep == 0 and dtheta > 0:
+                dtheta -= 2 * math.pi
+            elif sweep == 1 and dtheta < 0:
+                dtheta += 2 * math.pi
+            ctx.save()
+            ctx.translate(acx, acy)
+            ctx.rotate(x_rot)
+            ctx.scale(rx_a, ry_a)
+            if sweep == 1:
+                ctx.arc(0, 0, 1.0, theta1, theta1 + dtheta)
+            else:
+                ctx.arc_negative(0, 0, 1.0, theta1, theta1 + dtheta)
+            ctx.restore()
+            cx, cy = x2, y2
         elif cmd == 'C':
             x1, y1, x2, y2, x3, y3 = [float(tokens[i+k]) for k in range(6)]
             ctx.curve_to(x1, y1, x2, y2, x3, y3)
@@ -150,11 +210,15 @@ def _rasterize_cairo(svg):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, W, H)
     ctx = cairo.Context(surf)
 
-    def render_node(node, inherited_fill=None, inherited_rule="nonzero"):
+    def render_node(node, inherited_fill=None, inherited_rule="nonzero", inherited_op=1.0):
         tag = node.tag.split("}")[-1]
         fill = node.attrib.get("fill", inherited_fill)
         fill_rule = node.attrib.get("fill-rule", inherited_rule)
-        fill_op = float(node.attrib.get("fill-opacity", "1.0"))
+        grp_op = inherited_op * float(node.attrib.get("opacity", "1.0"))
+        fill_op = grp_op * float(node.attrib.get("fill-opacity", "1.0"))
+        stroke = node.attrib.get("stroke", "none")
+        stroke_op = grp_op * float(node.attrib.get("stroke-opacity", "1.0"))
+        stroke_w = float(node.attrib.get("stroke-width", "1.0"))
         tf = node.attrib.get("transform", "")
 
         ctx.save()
@@ -214,16 +278,26 @@ def _rasterize_cairo(svg):
             ctx.stroke()
         elif tag == "path":
             d = node.attrib.get("d", "")
-            if d and fill and fill != "none":
-                ctx.new_path()
-                ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD if fill_rule == "evenodd" else cairo.FILL_RULE_WINDING)
-                _draw_svg_path_cairo(ctx, d)
-                r, g, b = _hex_to_rgb01(fill)
-                ctx.set_source_rgba(r, g, b, fill_op)
-                ctx.fill()
+            if d:
+                if fill and fill != "none":
+                    ctx.new_path()
+                    ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD if fill_rule == "evenodd" else cairo.FILL_RULE_WINDING)
+                    _draw_svg_path_cairo(ctx, d)
+                    r, g, b = _hex_to_rgb01(fill)
+                    ctx.set_source_rgba(r, g, b, fill_op)
+                    ctx.fill()
+                if stroke and stroke != "none":
+                    ctx.new_path()
+                    _draw_svg_path_cairo(ctx, d)
+                    ctx.set_line_width(stroke_w)
+                    if node.attrib.get("stroke-linecap") == "round":
+                        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+                    sr, sg, sb = _hex_to_rgb01(stroke)
+                    ctx.set_source_rgba(sr, sg, sb, stroke_op)
+                    ctx.stroke()
 
         for child in node:
-            render_node(child, inherited_fill=fill, inherited_rule=fill_rule)
+            render_node(child, inherited_fill=fill, inherited_rule=fill_rule, inherited_op=grp_op)
         ctx.restore()
 
     render_node(root)

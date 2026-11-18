@@ -242,8 +242,10 @@ def build(cfg, font, marks_override=None):
     lay["line_boxes"] = P.build_line_boxes(font, lines, boxeds, body_size)
     pcfg = cfg.get("plugins", {})
     wm_opt = pcfg.get("watermark", cfg.get("watermark", None))
+    orn_opt = pcfg.get("ornament", cfg.get("ornament", None))
     marg_opt = pcfg.get("marginalia", cfg.get("marginalia", None))
     lay["watermark"] = P.build_watermark(font, wm_opt)
+    lay["ornament"] = P.build_ornament(orn_opt, x0)
     lay["marginalia"] = P.build_marginalia(font, marg_opt, x0)
 
     # 看得见的墨迹中心离画布中线多少（按上面的规则总是略偏右：首字左边那点留白的一半）

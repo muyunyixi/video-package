@@ -96,6 +96,9 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
         wm = lay["watermark"]
         L.append(f"  [插件一·大字藏锋]：「{wm['ch']}」字号 {wm['size']:.1f} px，不透明度 {wm['opacity']*100:.1f}%，"
                  f"墨迹 x {wm['ink'][0]:.2f}–{wm['ink'][2]:.2f}，y {wm['ink'][1]:.2f}–{wm['ink'][3]:.2f}")
+    if lay.get("ornament"):
+        orn = lay["ornament"]
+        L.append(f"  [插件一·固定装饰角标] 风格={orn['style']}，槽位 {orn['w']:.0f}×{orn['h']:.0f} px（x {orn['x']:.2f}–{orn['x_right']:.2f}，y {orn['y']:.2f}–{orn['y_bot']:.2f}），不透明度 {orn['opacity']*100:.1f}%")
     if lay.get("marginalia"):
         mg = lay["marginalia"]
         c_desc = "；".join(
@@ -205,7 +208,7 @@ def main():
         with zipfile.ZipFile(os.path.join(args.out, f"{stem}.zip"), "w", zipfile.ZIP_STORED) as z:
             z.write(out_png, os.path.basename(out_png))
 
-    recheck_img = rasterize(to_svg(lay, font, with_bg_plugins=False)) if (lay.get("watermark") or lay.get("marginalia")) else img
+    recheck_img = rasterize(to_svg(lay, font, with_bg_plugins=False)) if (lay.get("watermark") or lay.get("ornament") or lay.get("marginalia")) else img
     rows, marks = recheck(recheck_img, lay)
     text = report(cfg, lay, out_png, rows, marks, ref, mark_source)
     with open(os.path.join(args.out, f"{stem}_报告.txt"), "w", encoding="utf-8") as f:
