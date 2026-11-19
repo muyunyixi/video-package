@@ -3,7 +3,7 @@
 
 水平：网格排（一字一格、墨迹居中于字格），主左轴 x0 固定按七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）；
 正文按 body_align 选择每行各自居中（center）或左对齐于主左轴 x0（left）；署名按墨迹绝对居中。
-纵向：按稿定设计的文本框叠放（字号×行距），宋词上下阕之间的空行按 0.5 行高（60 px，基线差 180 px）算，整组垂直居中，再加实测校准。
+纵向（v2.3 纯网格）：标题区紧贴叠放，其余纵向间距统一以正文单行高 1U（120 px）为模数——副标题至正文首行 1.8U（216 px）、同阕 1.0U（120 px）、上下阕 1.5U（180 px）、正文末行至署名 2.0U（240 px）；近体诗底部预留 1.0U（120 px，等效在 0~1800 px 居中），宋词纯几何居中；移除旧版稿定实测校准补丁。
 """
 
 from . import template as T
@@ -154,8 +154,8 @@ def place(font, text, size, x_left, baseline, axis=True, color=T.WHITE, role="",
 # ---------------- 纵向 ----------------
 
 def vertical(font, tpl, lines_or_n):
-    """各元素的基线（输出像素）。
-    lines_or_n 可传正文文本列表 texts（其中空字符串 "" 按 tpl['empty_line_ratio'] 行高算，默认 0.5 行即 60 px）或整数行数。
+    """各元素的基线（输出像素，v2.3 纯网格规则）。
+    lines_or_n 可传正文文本列表 texts（其中空字符串 "" 按 tpl['empty_line_ratio'] 行高算，默认 0.5U 即 60 px）或整数行数。
     """
     beta = font.beta
 
@@ -165,36 +165,45 @@ def vertical(font, tpl, lines_or_n):
     stack = [("title",) + tpl["title"]]
     if "rule" in tpl:
         stack.append(("rule",) + tpl["rule"])
-    stack += [("sub",) + tpl["sub"], ("spacer",) + tpl["spacer"]]
+    if not tpl.get("sub_inline"):
+        stack.append(("sub",) + tpl["sub"])
+
     bs, bl = tpl["body"]
-    line_h = bs * bl
+    line_h = bs * bl                 # 1U = 103.5 (1x) = 120.00 px (输出)
     empty_ratio = tpl.get("empty_line_ratio", 0.5)
     if isinstance(lines_or_n, int):
         factors = [1.0] * lines_or_n
     else:
         factors = [1.0 if t else empty_ratio for t in lines_or_n]
-    body_box_h = (sum(factors) + 2.0) * line_h   # 正文各行（含空行系数）+ 空一行 + 署名行
-    bottom_h = tpl["bottom"][0] * tpl["bottom"][1] if tpl["bottom"] else 0.0
-    total = sum(s * lh for _, s, lh in stack) + body_box_h + bottom_h
 
-    y = (T.CANVAS_H_1X - total) / 2
-    base, tops = {}, {}
+    # 相对主标题行框上缘（y=0）推算各元素基线
+    y = 0.0
+    base = {}
     for name, s, lh in stack:
-        tops[name] = y
         base[name] = y + top_to_base(s, lh)
         y += s * lh
-    body = []
-    cur_y = y
-    for f in factors:
-        body.append(cur_y + top_to_base(bs, bl))
-        cur_y += f * line_h
-    sign = cur_y + 1.0 * line_h + top_to_base(bs, bl)
 
-    cal = tpl["calib_dy_px"]
-    out = {name: base[name] * T.S + cal.get(name, 0.0) for name in ("title", "rule", "sub") if name in base}
-    out["body"] = [b * T.S + cal["body"] for b in body]
-    out["sign"] = sign * T.S + cal["sign"]
-    out["stack_1x"] = dict(total=total, top=(T.CANVAS_H_1X - total) / 2)
+    # 副标题基线 -> 正文首行基线 = sub_to_body_u * 1U（v2.3 固定 1.8U = 216.00 px）
+    anchor_base = base["title"] if tpl.get("sub_inline") else base["sub"]
+    b0_base = anchor_base + tpl.get("sub_to_body_u", 1.8) * line_h
+    body_bases = []
+    cur_base = b0_base
+    for f in factors:
+        body_bases.append(cur_base)
+        cur_base += f * line_h
+    # 正文末行基线 -> 署名基线 = 2.0U（240.00 px；factors 末项为 1.0，故再加 1.0*line_h）
+    sign_base = cur_base + 1.0 * line_h
+
+    # 整体底边 = 署名行框底边 + bottom_u * 1U（近体诗 1.0U = 120 px，宋词 0）
+    base_to_bottom = line_h / 2 - beta * bs
+    bottom_h = tpl.get("bottom_u", 0.0) * line_h
+    total = sign_base + base_to_bottom + bottom_h
+    y_off = (T.CANVAS_H_1X - total) / 2.0
+
+    out = {name: (base[name] + y_off) * T.S for name in ("title", "rule", "sub") if name in base}
+    out["body"] = [(b + y_off) * T.S for b in body_bases]
+    out["sign"] = (sign_base + y_off) * T.S
+    out["stack_1x"] = dict(total=total, top=y_off)
     return out
 
 
@@ -232,7 +241,7 @@ def build(cfg, font, marks_override=None):
         starts = [cx - (b[0] + b[1]) / 2 if b else cx for b in bnds]
 
     lay = dict(mode=tpl["name"], tpl=tpl, bg=tpl["bg"], x0=x0, wmax=wmax, align=align,
-               vertical=v, rule=None, sub_box=None, marks=[], yellows=yellows, line_boxes=[])
+               vertical=v, rule=None, divider=None, sub_box=None, marks=[], yellows=yellows, line_boxes=[])
     lines = []
     for i, t in enumerate(texts):
         lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行", yellow_cols=yellows[i]))
@@ -260,7 +269,33 @@ def build(cfg, font, marks_override=None):
     sub_text = cfg.get("subtitle", "")
     sub_size = tpl["sub"][0] * S
     sub_w = cells(font, sub_text, sub_size)[1] if sub_text else 0.0
-    if "rule" in tpl:
+    if tpl.get("sub_inline"):
+        if sub_text:
+            title_inks = [g["ink"] for g in lay["title"]["glyphs"] if g["ink"]]
+            title_ink_bot = max(b[3] for b in title_inks) if title_inks else v["title"]
+            tmp_sub = place(font, sub_text, sub_size, 0.0, 0.0, role="副标题")
+            sub_inks = [g["ink"] for g in tmp_sub["glyphs"] if g["ink"]]
+            sub_ink_below = max(b[3] for b in sub_inks) if sub_inks else 0.0
+            sub_base = title_ink_bot - sub_ink_below
+            v["sub"] = sub_base
+            dcfg = tpl["divider"]
+            gap = float(dcfg["gap_px"])
+            x_div = x0 + lay["title"]["width"] + gap
+            x_sub = x_div + gap
+            lay["sub"] = place(font, sub_text, sub_size, x_sub, sub_base, role="副标题")
+            k = sub_size / font.upm
+            lay["divider"] = dict(
+                x=x_div,
+                y1=sub_base - font.ascent * k,
+                y2=sub_base - font.descent * k,
+                width=float(dcfg["width_px"]),
+                color=dcfg["color"],
+                opacity=float(dcfg["opacity"]),
+            )
+        else:
+            v["sub"] = v["title"]
+            lay["sub"] = place(font, "", sub_size, x0, v["title"], role="副标题")
+    elif "rule" in tpl:
         rs = tpl["rule"][0] * S
         lay["rule"] = place(font, "—" * tpl["rule_dashes"], rs, x0, v["rule"], role="横线")
         rule_right = x0 + tpl["rule_dashes"] * rs
@@ -296,7 +331,8 @@ def text_elements(lay):
     els = [lay["title"]]
     if lay["rule"]:
         els.append(lay["rule"])
-    els.append(lay["sub"])
+    if lay["sub"]["text"]:
+        els.append(lay["sub"])
     els += [l for l in lay["body"] if l["text"]]
     if lay["sign"]["text"]:
         els.append(lay["sign"])

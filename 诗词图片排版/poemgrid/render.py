@@ -62,6 +62,10 @@ def to_svg(lay, font, with_marks=True, with_bg_plugins=True):
                          f'transform="translate({gl["x"]:.4f} {gl["y"]:.4f}) scale({k_m:.8f} {-k_m:.8f})" d="{d_m}"/>')
         p.append("</g>")
 
+    if lay.get("divider"):
+        dv = lay["divider"]
+        p.append(f'<line x1="{dv["x"]:.4f}" y1="{dv["y1"]:.4f}" x2="{dv["x"]:.4f}" y2="{dv["y2"]:.4f}" '
+                 f'stroke="{dv["color"]}" stroke-width="{dv["width"]:.2f}" stroke-opacity="{dv["opacity"]:.4f}"/>')
     if lay["sub_box"]:
         b = lay["sub_box"]
         p.append(f'<rect x="{b["x"]:.4f}" y="{b["y"]:.4f}" width="{b["w"]:.4f}" height="{b["h"]:.4f}" '
