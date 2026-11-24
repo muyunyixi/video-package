@@ -8,7 +8,7 @@
 
 from . import template as T
 from . import plugins as P
-from .glyphs import CLOSE, FULL, OPEN, PUNCT
+from .glyphs import CLOSE, FULL, OPEN, PUNCT, STOP_BEFORE_CLOSE
 
 # ---------------- 文本、小黄标、金句变黄与浅金底衬标记 ----------------
 
@@ -81,26 +81,37 @@ def parse_line(s, return_yellow=False, return_all=False):
 def cells(font, text, size, axis=True):
     """每个字的字格（相对行起点）和绘制原点在格内的偏移；返回 (列表, 整行字格总宽)。
 
-    全角字、全角标点占 1 em；半角字按自身步进。axis=True 时全角字按墨迹居中于字格，
-    开符号靠右、闭符号靠左；半角字按步进原样放。整行边界一律取字格外缘。
+    全角字、独立全角标点占 1 em；半角字按自身步进。axis=True 时全角字按墨迹居中于字格，
+    开符号靠右、闭符号靠左；连续标点（如 ？” / 。”）前后各占 0.5 em 合占 1.0 em（v2.9）。
     """
     k = size / font.upm
     x, out = 0.0, []
-    for ch in text:
+    n = len(text)
+    for i, ch in enumerate(text):
         g = font.glyph(ch)
         adv = g["adv"] * k
         full = bool(FULL.search(ch)) or adv > 0.9 * size
-        c = size if full else adv
-        if g["blank"] or not axis or not FULL.search(ch):
-            pen = (c - adv) / 2
-        elif OPEN.search(ch):
-            pen = c - adv
-        elif CLOSE.search(ch):
-            pen = 0.0
+        prev_ch = text[i - 1] if i > 0 else ""
+        next_ch = text[i + 1] if i + 1 < n else ""
+
+        if axis and STOP_BEFORE_CLOSE.search(ch) and next_ch and CLOSE.search(next_ch):
+            c = size * 0.5
+            pen = c / 2.0 - (g["xmin"] + g["xmax"]) / 2.0 * k
+        elif axis and CLOSE.search(ch) and prev_ch and STOP_BEFORE_CLOSE.search(prev_ch):
+            c = size * 0.5
+            pen = c / 2.0 - (g["xmin"] + g["xmax"]) / 2.0 * k
         else:
-            pen = c / 2 - (g["xmin"] + g["xmax"]) / 2 * k
-            if ch in T.OPTICAL_SHIFT:
-                pen += T.OPTICAL_SHIFT[ch] * c
+            c = size if full else adv
+            if g["blank"] or not axis or not FULL.search(ch):
+                pen = (c - adv) / 2
+            elif OPEN.search(ch):
+                pen = c - adv
+            elif CLOSE.search(ch):
+                pen = 0.0
+            else:
+                pen = c / 2 - (g["xmin"] + g["xmax"]) / 2 * k
+                if ch in T.OPTICAL_SHIFT:
+                    pen += T.OPTICAL_SHIFT[ch] * c
         out.append(dict(ch=ch, left=x, width=c, pen=pen))
         x += c
     return out, x
@@ -120,7 +131,8 @@ def edges(font, text, size, axis=True, rule="mixed"):
     ink_r = c1["left"] + c1["pen"] + g1["xmax"] * k
     if rule == "ink":
         return ink_l, ink_r
-    left = c0["left"]
+    # v2.9 两端对称规则：行首与行尾只要是标点一律按墨迹边界算，汉字取字格外缘
+    left = ink_l if PUNCT.search(c0["ch"]) else c0["left"]
     right = ink_r if PUNCT.search(c1["ch"]) else c1["left"] + c1["width"]
     return left, right
 
@@ -248,6 +260,17 @@ def build(cfg, font, marks_override=None):
     for i, t in enumerate(texts):
         lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行", yellow_cols=yellows[i]))
     lay["body"] = lines
+    # v2.9 版心红线校验：正文任何一行有效边界严禁越过 [x0, x_right]（16 字标准行版心）
+    x_right = T.OUT_W - x0
+    overflow_lines = []
+    for i, (t, b) in enumerate(zip(texts, bnds)):
+        if not t or b is None:
+            continue
+        eff_l = starts[i] + b[0]
+        eff_r = starts[i] + b[1]
+        if eff_l < x0 - 0.5 or eff_r > x_right + 0.5:
+            overflow_lines.append(dict(row=i, text=t, left=eff_l, right=eff_r, x0=x0, x_right=x_right))
+    lay["overflow_lines"] = overflow_lines
 
     # 视觉插件（v2.7：仅保留右上角固定装饰角标 ornament；大字藏锋/水印词序/正文选中底衬已封存，代码保留在 plugins.py 中不再调用）
     pcfg = cfg.get("plugins", {})

@@ -1,4 +1,4 @@
-"""副标题（封面腰封）、标点、平台标题与正文高亮防重复规范检查（v2.8）。
+"""副标题（封面腰封）、标点、平台标题与正文高亮防重复规范检查（v2.9）。
 
 规范要点：
 1. 核心架构：正文图内的副标题即封面腰封，平台标题直接提取腰封文字；小红书可另配单张金句大字图作首图封面。
@@ -194,6 +194,18 @@ def check_copy_rules(cfg, lay):
             )
         else:
             notes.append("正文高亮防重复：副标题与正文强调句无重复。")
+
+    # 4. 正文版心红线检查（v2.9：严禁越过 16 字标准行 [x0, x_right]）
+    ov = lay.get("overflow_lines") or []
+    if ov:
+        for item in ov:
+            warnings.append(
+                f"正文版心越界：第{item['row'] + 1}行「{item['text']}」有效范围 "
+                f"{item['left']:.2f}–{item['right']:.2f} px 超出 16 字标准版心 "
+                f"[{item['x0']:.2f}, {item['x_right']:.2f}]，请拆行或精简字数。"
+            )
+    else:
+        notes.append("正文版心红线：各行均严守 16 字标准版心 [93.34, 1346.66] 以内。")
 
     plat_title, plat_note = suggest_platform_title(title, sub, sub_kind)
     return dict(

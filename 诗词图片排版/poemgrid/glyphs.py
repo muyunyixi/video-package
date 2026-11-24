@@ -12,6 +12,7 @@ FULL = re.compile(r"[—-‧‰-※⺀-鿿豈-﫿︰-﹯！-｠￠-￯]")
 PUNCT = re.compile(r"[，。、；：？！…—·《》〈〉“”‘’（）「」『』【】〔〕〖〗,.;:?!'\"()\[\]]")
 OPEN = re.compile(r"[“‘《〈『「（〔【〖]")    # 开符号：靠字格右边
 CLOSE = re.compile(r"[”’》〉』」）〕】〗]")   # 闭符号：靠字格左边
+STOP_BEFORE_CLOSE = re.compile(r"[，。、；：？！]")  # v2.9：紧跟闭符号时触发半格挤压（合占 1.0 em）
 
 
 class Font:
