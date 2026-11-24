@@ -287,7 +287,18 @@ def build(cfg, font, marks_override=None):
         gl = [g for l in ls for g in l["glyphs"] if g["ink"]]
         return (min(g["ink"][0] for g in gl) + max(g["ink"][2] for g in gl)) / 2 - cx
     lay["ink_offset"] = [ink_c(inked)] if align == "left" else [ink_c([l]) for l in inked]
-    lay["title"] = place(font, cfg["title"], tpl["title"][0] * S, x0, v["title"], role="主标题")
+    # v2.10 大标题视觉左齐：整行按网格排好后，整体左移使主标题最左一笔墨迹精确贴齐主左轴 x0（与书签条暖金竖线共线）
+    title_el = place(font, cfg["title"], tpl["title"][0] * S, x0, v["title"], role="主标题")
+    t_inks = [g["ink"][0] for g in title_el["glyphs"] if g["ink"]]
+    if t_inks:
+        t_dx = x0 - min(t_inks)
+        title_el["x_left"] += t_dx
+        for g in title_el["glyphs"]:
+            g["x"] += t_dx
+            g["cell"] = (g["cell"][0] + t_dx, g["cell"][1] + t_dx)
+            if g["ink"]:
+                g["ink"] = (g["ink"][0] + t_dx, g["ink"][1], g["ink"][2] + t_dx, g["ink"][3])
+    lay["title"] = title_el
 
     sub_text = cfg.get("subtitle", "")
     sub_size = tpl["sub"][0] * S
