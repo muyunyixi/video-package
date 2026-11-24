@@ -99,6 +99,8 @@ def cells(font, text, size, axis=True):
             pen = 0.0
         else:
             pen = c / 2 - (g["xmin"] + g["xmax"]) / 2 * k
+            if ch in T.OPTICAL_SHIFT:
+                pen += T.OPTICAL_SHIFT[ch] * c
         out.append(dict(ch=ch, left=x, width=c, pen=pen))
         x += c
     return out, x
@@ -247,15 +249,13 @@ def build(cfg, font, marks_override=None):
         lines.append(place(font, t, body_size, starts[i], v["body"][i], role=f"正文第{i + 1}行", yellow_cols=yellows[i]))
     lay["body"] = lines
 
-    # 可选视觉插件（v2.0 模块化插件包，详见 plugins.py 与《视觉插件说明.md》）
-    lay["line_boxes"] = P.build_line_boxes(font, lines, boxeds, body_size)
+    # 视觉插件（v2.7：仅保留右上角固定装饰角标 ornament；大字藏锋/水印词序/正文选中底衬已封存，代码保留在 plugins.py 中不再调用）
     pcfg = cfg.get("plugins", {})
-    wm_opt = pcfg.get("watermark", cfg.get("watermark", None))
     orn_opt = pcfg.get("ornament", cfg.get("ornament", None))
-    marg_opt = pcfg.get("marginalia", cfg.get("marginalia", None))
-    lay["watermark"] = P.build_watermark(font, wm_opt)
+    lay["line_boxes"] = []
+    lay["watermark"] = None
     lay["ornament"] = P.build_ornament(orn_opt, x0)
-    lay["marginalia"] = P.build_marginalia(font, marg_opt, x0)
+    lay["marginalia"] = None
 
     # 看得见的墨迹中心离画布中线多少（按上面的规则总是略偏右：首字左边那点留白的一半）
     inked = [l for l in lines if l["text"]]
@@ -301,14 +301,23 @@ def build(cfg, font, marks_override=None):
         rule_right = x0 + tpl["rule_dashes"] * rs
         lay["sub"] = place(font, sub_text, sub_size, rule_right - sub_w, v["sub"], role="副标题")
     else:
-        # 高亮底块 = 字的内容框（宽：字格总宽；高：hhea 上下界）四周各加 padding；左缘对齐 x0
+        # v2.7 统一「书签条」副标题：12% 轻透白底 + 100% 暖金左竖杠 + 100% 白字，左缘对齐 x0
         box = tpl["sub_box"]
-        pad = box["padding_1x"] * S
+        pad_y = box["padding_1x"] * S
+        bar_w = float(box.get("bar_width_px", 0.0))
+        pad_l = float(box.get("pad_left_px", pad_y))
+        pad_r = float(box.get("pad_right_px", pad_y))
         k = sub_size / font.upm
-        lay["sub"] = place(font, sub_text, sub_size, x0 + pad, v["sub"], color=box["text_color"], role="副标题")
-        top = v["sub"] - font.ascent * k - pad
-        lay["sub_box"] = dict(x=x0, y=top, w=sub_w + 2 * pad, h=(font.ascent - font.descent) * k + 2 * pad,
-                              color=box["color"], opacity=box["opacity"])
+        if sub_text:
+            lay["sub"] = place(font, sub_text, sub_size, x0 + bar_w + pad_l, v["sub"], color=box["text_color"], role="副标题")
+            top = v["sub"] - font.ascent * k - pad_y
+            lay["sub_box"] = dict(
+                x=x0, y=top, w=bar_w + pad_l + sub_w + pad_r, h=(font.ascent - font.descent) * k + 2 * pad_y,
+                color=box["color"], opacity=box["opacity"],
+                bar_color=box.get("bar_color"), bar_opacity=box.get("bar_opacity", 1.00), bar_width=bar_w,
+            )
+        else:
+            lay["sub"] = place(font, "", sub_size, x0, v["sub"], color=box["text_color"], role="副标题")
 
     # 署名：全角字一字一格且格内按墨迹居中、半角字按步进，整行按墨迹（最左一笔到最右一笔）在画布中线绝对居中
     sign = cfg.get("sign", "")

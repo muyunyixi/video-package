@@ -70,6 +70,9 @@ def to_svg(lay, font, with_marks=True, with_bg_plugins=True):
         b = lay["sub_box"]
         p.append(f'<rect x="{b["x"]:.4f}" y="{b["y"]:.4f}" width="{b["w"]:.4f}" height="{b["h"]:.4f}" '
                  f'fill="{b["color"]}" fill-opacity="{b["opacity"]}"/>')
+        if b.get("bar_width") and b.get("bar_color"):
+            p.append(f'<rect x="{b["x"]:.4f}" y="{b["y"]:.4f}" width="{b["bar_width"]:.4f}" height="{b["h"]:.4f}" '
+                     f'fill="{b["bar_color"]}" fill-opacity="{b["bar_opacity"]}"/>')
     if lay.get("line_boxes"):
         p.append("<g>")
         for lb in lay["line_boxes"]:
