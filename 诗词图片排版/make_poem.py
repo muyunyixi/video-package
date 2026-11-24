@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""诗词图片排版：按诗词内容生成 1440×1920 的诗词图（v2.3 统一红底 #900202、1U=120px 纯网格纵向规范）。
+"""诗词图片排版：按诗词内容生成 1440×1920 的诗词图（v2.5 统一红底 #900202、1U=120px 纯网格纵向规范）。
 
 用法：
   python make_poem.py poems/绝句-春天停下了么.toml
@@ -27,6 +27,7 @@ sys.path.insert(0, HERE)
 
 from poemgrid import template as T                      # noqa: E402
 from poemgrid.glyphs import Font                         # noqa: E402
+from poemgrid.check import check_copy_rules              # noqa: E402
 from poemgrid.layout import build, parse_line           # noqa: E402
 from poemgrid.measure import analyze_reference, mark_gaps, recheck  # noqa: E402
 from poemgrid.render import rasterize, to_svg           # noqa: E402
@@ -50,7 +51,7 @@ def fmt(v):
     return f"{v:+.2f}"
 
 
-def report(cfg, lay, out_png, rows, marks, ref, mark_source):
+def report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk=None):
     tpl = lay["tpl"]
     L = []
     n_lines = len(lay["body"])
@@ -132,10 +133,19 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source):
     if marks:
         L.append(f"  小黄标 {len(marks)} 个：水平最大 {fmt(max((m['dx'] for m in marks), key=abs))}，"
                  f"竖直最大 {fmt(max((m['dy'] for m in marks), key=abs))}")
+    if copy_chk:
+        L.append("")
+        L.append("四、副标题（腰封）与文案规范检查")
+        L.append(f"  副标题类型：{copy_chk['sub_kind']}")
+        L.append(f"  推荐平台标题：{copy_chk['platform_title']}（{copy_chk['platform_note']}）")
+        for n in copy_chk["notes"]:
+            L.append(f"  [通过] {n}")
+        for w in copy_chk["warnings"]:
+            L.append(f"  [提醒] {w}")
     if ref:
         L.append("")
         w0, h0 = ref["size"]
-        L.append(f"四、参考图对照（参考图 {w0}×{h0}，统一到 {T.OUT_W}×{T.OUT_H} 比；正数 = 参考图偏下/偏右）")
+        L.append(f"五、参考图对照（参考图 {w0}×{h0}，统一到 {T.OUT_W}×{T.OUT_H} 比；正数 = 参考图偏下/偏右）")
         L.append("  注：稿定里排的图按字格居中（“。”右边的空白也算进行宽），水平方向普遍比本规则偏左约 12 px，"
                  "署名偏左约 2 px，这是规则不同，不是错；看纵向和小黄标的偏差即可。")
         for w in ref["warnings"]:
@@ -166,6 +176,7 @@ def main():
     ap.add_argument("--font", default=DEFAULT_FONT)
     ap.add_argument("--svg", action="store_true")
     ap.add_argument("--zip", action="store_true")
+    ap.add_argument("--strict", action="store_true", help="文案/副标题规范检查有提醒时以非零状态码退出")
     args = ap.parse_args()
 
     cfg = load_cfg(args.config)
@@ -210,10 +221,13 @@ def main():
 
     recheck_img = rasterize(to_svg(lay, font, with_bg_plugins=False)) if (lay.get("watermark") or lay.get("ornament") or lay.get("marginalia")) else img
     rows, marks = recheck(recheck_img, lay)
-    text = report(cfg, lay, out_png, rows, marks, ref, mark_source)
+    copy_chk = check_copy_rules(cfg, lay)
+    text = report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk)
     with open(os.path.join(args.out, f"{stem}_报告.txt"), "w", encoding="utf-8") as f:
         f.write(text + "\n")
     print(text)
+    if args.strict and copy_chk["warnings"]:
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":

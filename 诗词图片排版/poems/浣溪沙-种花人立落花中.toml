@@ -12,5 +12,5 @@ sign = "/muyun."
 
 # 插件一：背景装帧异化插件（大字藏锋底字 + 右上角固定 40×140 px 装饰角标；默认 bamboo_moon 瘦竹新月）
 [plugins]
-watermark = "春"
+# watermark = "春"  # 可选彩蛋：v2.4 起默认关闭，极短篇按需取消注释启用
 ornament = "bamboo_moon"
