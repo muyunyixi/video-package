@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""诗词图片排版：按诗词内容生成 1440×1920 的诗词图（v2.5 统一红底 #900202、1U=120px 纯网格纵向规范）。
+"""诗词图片排版：按诗词内容生成 1440×1920 的诗词图（v2.6 统一红底 #900202、1U=120px 纯网格纵向规范）。
 
 用法：
   python make_poem.py poems/绝句-春天停下了么.toml
@@ -30,6 +30,7 @@ from poemgrid.glyphs import Font                         # noqa: E402
 from poemgrid.check import check_copy_rules              # noqa: E402
 from poemgrid.layout import build, parse_line           # noqa: E402
 from poemgrid.measure import analyze_reference, mark_gaps, recheck  # noqa: E402
+from poemgrid.quote import build_quote, to_quote_svg    # noqa: E402
 from poemgrid.render import rasterize, to_svg           # noqa: E402
 
 DEFAULT_FONT = os.path.normpath(os.path.join(HERE, "..", "公共", "汇文明朝体.otf"))
@@ -51,7 +52,7 @@ def fmt(v):
     return f"{v:+.2f}"
 
 
-def report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk=None):
+def report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk=None, quote_info=None):
     tpl = lay["tpl"]
     L = []
     n_lines = len(lay["body"])
@@ -59,6 +60,10 @@ def report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk=None):
     title = cfg["title"] + (f"·{cfg['subtitle']}" if cfg.get("subtitle") else "")
     L.append(f"《{title}》 {tpl['name']}  正文 {n_lines} 行（含空行），最长一行 {longest} 字")
     L.append(f"输出：{out_png}（{T.OUT_W}×{T.OUT_H}）")
+    if quote_info:
+        ql = quote_info["qlay"]
+        q_bases = " / ".join(f"{b:.2f}" for b in ql["baselines"])
+        L.append(f"金句封面：{quote_info['png']}（{ql['source']}，{len(ql['lines'])} 行，字号 {ql['size']:.1f} px，基线 {q_bases}）")
     L.append("")
     L.append("一、版式（输出像素）")
     L.append(f"  主左轴 x0 = {lay['x0']:.2f}（固定按 16 字标准行对齐；本篇最宽一行字格宽 {lay['wmax']:.2f}）；"
@@ -177,6 +182,7 @@ def main():
     ap.add_argument("--svg", action="store_true")
     ap.add_argument("--zip", action="store_true")
     ap.add_argument("--strict", action="store_true", help="文案/副标题规范检查有提醒时以非零状态码退出")
+    ap.add_argument("--no-quote", action="store_true", help="跳过额外生成小红书大字金句封面图")
     args = ap.parse_args()
 
     cfg = load_cfg(args.config)
@@ -215,14 +221,30 @@ def main():
     if args.svg:
         with open(os.path.join(args.out, f"{stem}.svg"), "w", encoding="utf-8") as f:
             f.write(svg)
+
+    quote_info = None
+    if not args.no_quote:
+        qlay = build_quote(cfg, lay, font)
+        if qlay is not None:
+            q_svg = to_quote_svg(qlay, font)
+            q_img = rasterize(q_svg)
+            q_png = os.path.join(args.out, f"{stem}_金句.png")
+            q_img.save(q_png, optimize=False, compress_level=6)
+            if args.svg:
+                with open(os.path.join(args.out, f"{stem}_金句.svg"), "w", encoding="utf-8") as f:
+                    f.write(q_svg)
+            quote_info = dict(qlay=qlay, png=q_png)
+
     if args.zip:
         with zipfile.ZipFile(os.path.join(args.out, f"{stem}.zip"), "w", zipfile.ZIP_STORED) as z:
             z.write(out_png, os.path.basename(out_png))
+            if quote_info:
+                z.write(quote_info["png"], os.path.basename(quote_info["png"]))
 
     recheck_img = rasterize(to_svg(lay, font, with_bg_plugins=False)) if (lay.get("watermark") or lay.get("ornament") or lay.get("marginalia")) else img
     rows, marks = recheck(recheck_img, lay)
     copy_chk = check_copy_rules(cfg, lay)
-    text = report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk)
+    text = report(cfg, lay, out_png, rows, marks, ref, mark_source, copy_chk, quote_info)
     with open(os.path.join(args.out, f"{stem}_报告.txt"), "w", encoding="utf-8") as f:
         f.write(text + "\n")
     print(text)
