@@ -1,3 +1,5 @@
+import re
+
 """按内容算出每个字、横线、高亮底块、小黄标在 1440×1920 上的位置。
 非固定使用的可选视觉插件（大字藏锋、水印词序、浅金底衬）由 `poemgrid/plugins.py` 按需构建。
 
@@ -167,8 +169,23 @@ def place(font, text, size, x_left, baseline, axis=True, color=T.WHITE, role="",
 
 # ---------------- 纵向 ----------------
 
-def vertical(font, tpl, lines_or_n):
-    """各元素的基线（输出像素，v2.3 纯网格规则）。
+_SUB_CLEAN_RE = re.compile(r"[，。、；：？！…—·《》〈〉“”‘’（）「」『』【】〔〕〖〗,.;:?!'"()\[\]\s]+")
+
+
+def is_inline_subtitle(tpl, sub_text):
+    """v2.11 双态自适应：副标题有效字数 <= inline_max_chars（默认 4 字）时走单行同行书签条。"""
+    if tpl.get("sub_inline"):
+        return True
+    box = tpl.get("sub_box") or {}
+    max_ch = int(box.get("inline_max_chars", 0))
+    if max_ch <= 0 or not sub_text:
+        return False
+    pure = _SUB_CLEAN_RE.sub("", sub_text.strip())
+    return 0 < len(pure) <= max_ch
+
+
+def vertical(font, tpl, lines_or_n, sub_inline=False):
+    """各元素的基线（输出像素，v2.11 双态纯网格规则）。
     lines_or_n 可传正文文本列表 texts（其中空字符串 "" 按 tpl['empty_line_ratio'] 行高算，默认 0.5U 即 60 px）或整数行数。
     """
     beta = font.beta
@@ -179,7 +196,7 @@ def vertical(font, tpl, lines_or_n):
     stack = [("title",) + tpl["title"]]
     if "rule" in tpl:
         stack.append(("rule",) + tpl["rule"])
-    if not tpl.get("sub_inline"):
+    if not sub_inline:
         stack.append(("sub",) + tpl["sub"])
 
     bs, bl = tpl["body"]
@@ -197,9 +214,13 @@ def vertical(font, tpl, lines_or_n):
         base[name] = y + top_to_base(s, lh)
         y += s * lh
 
-    # 副标题基线 -> 正文首行基线 = sub_to_body_u * 1U（v2.3 固定 1.8U = 216.00 px）
-    anchor_base = base["title"] if tpl.get("sub_inline") else base["sub"]
-    b0_base = anchor_base + tpl.get("sub_to_body_u", 1.8) * line_h
+    # 单行模式：主标题基线 -> 正文首行 = 2.0U（240 px）；双行模式：副标题基线 -> 正文首行 = 1.8U（216 px）
+    if sub_inline:
+        box = tpl.get("sub_box") or {}
+        gap_u = float(box.get("inline_to_body_u", 2.0))
+        b0_base = base["title"] + gap_u * line_h
+    else:
+        b0_base = base["sub"] + tpl.get("sub_to_body_u", 1.8) * line_h
     body_bases = []
     cur_base = b0_base
     for f in factors:
@@ -236,7 +257,9 @@ def build(cfg, font, marks_override=None):
     if marks_override is not None:
         marks = [set(marks_override.get(i, ())) for i in range(len(texts))]
     n = len(texts)
-    v = vertical(font, tpl, texts)
+    sub_text = cfg.get("subtitle", "")
+    sub_inline = is_inline_subtitle(tpl, sub_text)
+    v = vertical(font, tpl, texts, sub_inline=sub_inline)
 
     # 水平（v1.8）：主左轴 x0 固定为七言 16 字标准行（14 汉字 +“，”+“。”）居中后的左格（93.34 px）。
     # body_align = "center"（近体诗与宋词均默认）：正文每行按“行首取字格左缘、行尾汉字取字格外缘/标点取墨迹右缘”各自在画布中线 720 居中；
@@ -300,58 +323,46 @@ def build(cfg, font, marks_override=None):
                 g["ink"] = (g["ink"][0] + t_dx, g["ink"][1], g["ink"][2] + t_dx, g["ink"][3])
     lay["title"] = title_el
 
-    sub_text = cfg.get("subtitle", "")
     sub_size = tpl["sub"][0] * S
     sub_w = cells(font, sub_text, sub_size)[1] if sub_text else 0.0
-    if tpl.get("sub_inline"):
-        if sub_text:
-            title_inks = [g["ink"] for g in lay["title"]["glyphs"] if g["ink"]]
-            title_ink_bot = max(b[3] for b in title_inks) if title_inks else v["title"]
-            tmp_sub = place(font, sub_text, sub_size, 0.0, 0.0, role="副标题")
-            sub_inks = [g["ink"] for g in tmp_sub["glyphs"] if g["ink"]]
-            sub_ink_below = max(b[3] for b in sub_inks) if sub_inks else 0.0
-            sub_base = title_ink_bot - sub_ink_below
-            v["sub"] = sub_base
-            dcfg = tpl["divider"]
-            gap = float(dcfg["gap_px"])
-            x_div = x0 + lay["title"]["width"] + gap
-            x_sub = x_div + gap
-            lay["sub"] = place(font, sub_text, sub_size, x_sub, sub_base, role="副标题")
-            k = sub_size / font.upm
-            lay["divider"] = dict(
-                x=x_div,
-                y1=sub_base - font.ascent * k,
-                y2=sub_base - font.descent * k,
-                width=float(dcfg["width_px"]),
-                color=dcfg["color"],
-                opacity=float(dcfg["opacity"]),
-            )
-        else:
-            v["sub"] = v["title"]
-            lay["sub"] = place(font, "", sub_size, x0, v["title"], role="副标题")
-    elif "rule" in tpl:
-        rs = tpl["rule"][0] * S
-        lay["rule"] = place(font, "—" * tpl["rule_dashes"], rs, x0, v["rule"], role="横线")
-        rule_right = x0 + tpl["rule_dashes"] * rs
-        lay["sub"] = place(font, sub_text, sub_size, rule_right - sub_w, v["sub"], role="副标题")
+    box = tpl["sub_box"]
+    pad_y = box["padding_1x"] * S
+    bar_w = float(box.get("bar_width_px", 0.0))
+    pad_l = float(box.get("pad_left_px", pad_y))
+    pad_r = float(box.get("pad_right_px", pad_y))
+    k = sub_size / font.upm
+    box_h = (font.ascent - font.descent) * k + 2 * pad_y
+    nat_w = bar_w + pad_l + sub_w + pad_r
+
+    if not sub_text:
+        v["sub"] = v["title"]
+        lay["sub"] = place(font, "", sub_size, x0, v["title"], color=box["text_color"], role="副标题")
+    elif sub_inline:
+        # v2.11 单行模式（<=4 字）：复用书签条样式，置于主标题末字格右缘 + 28 px，底边脚齐主标题墨迹下缘
+        t_inks_bot = [g["ink"][3] for g in lay["title"]["glyphs"] if g["ink"]]
+        title_ink_bot = max(t_inks_bot) if t_inks_bot else v["title"]
+        box_y = title_ink_bot - box_h
+        sub_base = box_y + pad_y + font.ascent * k
+        v["sub"] = sub_base
+        box_x = lay["title"]["x_left"] + lay["title"]["width"] + float(box.get("inline_gap_px", 28.0))
+        lay["sub"] = place(font, sub_text, sub_size, box_x + bar_w + pad_l, sub_base, color=box["text_color"], role="副标题")
+        lay["sub_box"] = dict(
+            x=box_x, y=box_y, w=nat_w, h=box_h,
+            color=box["color"], opacity=box["opacity"],
+            bar_color=box.get("bar_color"), bar_opacity=box.get("bar_opacity", 1.00), bar_width=bar_w,
+        )
     else:
-        # v2.7 统一「书签条」副标题：12% 轻透白底 + 100% 暖金左竖杠 + 100% 白字，左缘对齐 x0
-        box = tpl["sub_box"]
-        pad_y = box["padding_1x"] * S
-        bar_w = float(box.get("bar_width_px", 0.0))
-        pad_l = float(box.get("pad_left_px", pad_y))
-        pad_r = float(box.get("pad_right_px", pad_y))
-        k = sub_size / font.upm
-        if sub_text:
-            lay["sub"] = place(font, sub_text, sub_size, x0 + bar_w + pad_l, v["sub"], color=box["text_color"], role="副标题")
-            top = v["sub"] - font.ascent * k - pad_y
-            lay["sub_box"] = dict(
-                x=x0, y=top, w=bar_w + pad_l + sub_w + pad_r, h=(font.ascent - font.descent) * k + 2 * pad_y,
-                color=box["color"], opacity=box["opacity"],
-                bar_color=box.get("bar_color"), bar_opacity=box.get("bar_opacity", 1.00), bar_width=bar_w,
-            )
-        else:
-            lay["sub"] = place(font, "", sub_size, x0, v["sub"], color=box["text_color"], role="副标题")
+        # v2.11 双行模式（>4 字）：书签条左齐 x0，宽度保底不小于主标题视觉宽度（墨迹右缘 - x0）
+        t_inks_r = [g["ink"][2] for g in lay["title"]["glyphs"] if g["ink"]]
+        title_vis_w = (max(t_inks_r) - x0) if t_inks_r else lay["title"]["width"]
+        box_w = max(nat_w, title_vis_w)
+        lay["sub"] = place(font, sub_text, sub_size, x0 + bar_w + pad_l, v["sub"], color=box["text_color"], role="副标题")
+        top = v["sub"] - font.ascent * k - pad_y
+        lay["sub_box"] = dict(
+            x=x0, y=top, w=box_w, h=box_h,
+            color=box["color"], opacity=box["opacity"],
+            bar_color=box.get("bar_color"), bar_opacity=box.get("bar_opacity", 1.00), bar_width=bar_w,
+        )
 
     # 署名：全角字一字一格且格内按墨迹居中、半角字按步进，整行按墨迹（最左一笔到最右一笔）在画布中线绝对居中
     sign = cfg.get("sign", "")
